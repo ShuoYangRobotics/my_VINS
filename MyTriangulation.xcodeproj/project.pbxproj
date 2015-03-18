@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		288F61841AB901C400F2A010 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 288F61831AB901C400F2A010 /* main.cpp */; };
+		288F618C1AB9963B00F2A010 /* Camera.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 288F618B1AB9963B00F2A010 /* Camera.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +26,8 @@
 /* Begin PBXFileReference section */
 		288F61801AB901C400F2A010 /* MyTriangulation */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MyTriangulation; sourceTree = BUILT_PRODUCTS_DIR; };
 		288F61831AB901C400F2A010 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		288F618A1AB9912800F2A010 /* Camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Camera.h; sourceTree = "<group>"; };
+		288F618B1AB9963B00F2A010 /* Camera.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Camera.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +61,8 @@
 			isa = PBXGroup;
 			children = (
 				288F61831AB901C400F2A010 /* main.cpp */,
+				288F618A1AB9912800F2A010 /* Camera.h */,
+				288F618B1AB9963B00F2A010 /* Camera.cpp */,
 			);
 			path = MyTriangulation;
 			sourceTree = "<group>";
@@ -118,6 +123,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				288F618C1AB9963B00F2A010 /* Camera.cpp in Sources */,
 				288F61841AB901C400F2A010 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -202,6 +208,11 @@
 		288F61881AB901C400F2A010 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					/Users/paulyang/Documents/eigen_lib,
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -209,6 +220,11 @@
 		288F61891AB901C400F2A010 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					/Users/paulyang/Documents/eigen_lib,
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
