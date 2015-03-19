@@ -10,6 +10,8 @@
 #include <Eigen/Dense>
 
 #include "Camera.h"
+#include "math_tool.h"
+#include "MSCKF.h"
 using namespace Eigen;
 
 int main(int argc, const char * argv[]) {
@@ -29,5 +31,22 @@ int main(int argc, const char * argv[]) {
     
     std::cout << "projected point is " << z << std::endl;
     std::cout << "Jacobian matrix is " << std::endl << Jacob_h << std::endl;
+    
+    Vector4f q;
+    Matrix3f R;
+    q << 1, 2, 3, 4;
+    q = q/q.norm();
+    
+    R = quaternion_to_R(q);
+    
+    
+    std::cout << "q is " << q << std::endl;
+    std::cout << "R is " << R << std::endl;
+    
+    MSCKF my_kf;
+    Matrix4f omega;
+    omega = omega_mtx(ptr);
+    
+    std::cout << "omega is " << omega << std::endl;
     return 0;
 }

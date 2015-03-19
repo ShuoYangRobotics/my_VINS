@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		288F61841AB901C400F2A010 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 288F61831AB901C400F2A010 /* main.cpp */; };
 		288F618C1AB9963B00F2A010 /* Camera.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 288F618B1AB9963B00F2A010 /* Camera.cpp */; };
+		288F61901AB9AE1D00F2A010 /* math_tool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 288F618E1AB9AE1D00F2A010 /* math_tool.cpp */; };
+		288F61931AB9B38A00F2A010 /* MSCKF.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 288F61911AB9B38A00F2A010 /* MSCKF.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -28,6 +30,10 @@
 		288F61831AB901C400F2A010 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		288F618A1AB9912800F2A010 /* Camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Camera.h; sourceTree = "<group>"; };
 		288F618B1AB9963B00F2A010 /* Camera.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Camera.cpp; sourceTree = "<group>"; };
+		288F618E1AB9AE1D00F2A010 /* math_tool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = math_tool.cpp; sourceTree = "<group>"; };
+		288F618F1AB9AE1D00F2A010 /* math_tool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = math_tool.h; sourceTree = "<group>"; };
+		288F61911AB9B38A00F2A010 /* MSCKF.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MSCKF.cpp; sourceTree = "<group>"; };
+		288F61921AB9B38A00F2A010 /* MSCKF.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MSCKF.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +69,10 @@
 				288F61831AB901C400F2A010 /* main.cpp */,
 				288F618A1AB9912800F2A010 /* Camera.h */,
 				288F618B1AB9963B00F2A010 /* Camera.cpp */,
+				288F618E1AB9AE1D00F2A010 /* math_tool.cpp */,
+				288F618F1AB9AE1D00F2A010 /* math_tool.h */,
+				288F61911AB9B38A00F2A010 /* MSCKF.cpp */,
+				288F61921AB9B38A00F2A010 /* MSCKF.h */,
 			);
 			path = MyTriangulation;
 			sourceTree = "<group>";
@@ -125,6 +135,8 @@
 			files = (
 				288F618C1AB9963B00F2A010 /* Camera.cpp in Sources */,
 				288F61841AB901C400F2A010 /* main.cpp in Sources */,
+				288F61931AB9B38A00F2A010 /* MSCKF.cpp in Sources */,
+				288F61901AB9AE1D00F2A010 /* math_tool.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
