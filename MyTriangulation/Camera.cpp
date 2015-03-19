@@ -9,6 +9,7 @@
 #include <math.h>
 #include <iostream>
 #include "Camera.h"
+#include "math_tool.h"
 using namespace std;
 using namespace Eigen;
 DistortCamera::DistortCamera()
@@ -137,7 +138,44 @@ MatrixXf DistortCamera::Jh(Vector3f ptr)
     return J;
 }
 
-
+// measure is 2f
+Vector3f DistortCamera::triangulate(MatrixXf measure, MatrixXf pose)
+{
+    int num_item = (int)pose.cols();
+    
+    MatrixXf q_list = MatrixXf::Zero(4, num_item);
+    MatrixXf t_list = MatrixXf::Zero(3, num_item);
+    
+    Matrix3f R_wc0 = quaternion_to_R(pose.block<4,1>(0,0));
+    Vector3f t_wc0 = pose.block<3,1>(4,0);
+    
+    Matrix3f R_wci = Matrix3f::Identity(3, 3);
+    Vector3f t_wci = Vector3f::Zero(3, 1);
+    Matrix3f R_c0ci, R_cic0;
+    Vector3f t_c0ci, t_cic0;
+    
+    q_list.block<4,1>(0, 0) = Vector4f(1,0,0,0);
+    t_list.block<3,1>(0, 0) = t_wci;
+    
+    // TODO: rewrite this piece use quaternion
+    for (int i=1; i<num_item; i++)
+    {
+        R_wci = quaternion_to_R(pose.block<4,1>(0,i));
+        t_wci = pose.block<3,1>(4,i);
+        
+        R_c0ci = R_wc0.transpose()*R_wci;
+        t_c0ci = R_wc0.transpose()*(t_wci - t_wc0);
+        R_cic0 = R_c0ci.transpose();
+        t_cic0 = - R_c0ci.transpose()*t_c0ci;
+        
+        q_list.block<4,1>(0,i) = R_to_quaternion(R_cic0);
+        t_list.block<3,1>(0,i) = t_cic0;
+    }
+    
+    
+    return t_wc0;
+    
+}
 
 
 

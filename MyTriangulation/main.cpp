@@ -32,6 +32,8 @@ int main(int argc, const char * argv[]) {
     std::cout << "projected point is " << z << std::endl;
     std::cout << "Jacobian matrix is " << std::endl << Jacob_h << std::endl;
     
+    std::cout << "Jacobian matrix has cols " << Jacob_h.cols() << std::endl;
+    
     Vector4f q;
     Matrix3f R;
     q << 1, 2, 3, 4;
@@ -39,6 +41,7 @@ int main(int argc, const char * argv[]) {
     
     R = quaternion_to_R(q);
     
+    q = Vector4f(1,0,0,0);
     
     std::cout << "q is " << q << std::endl;
     std::cout << "R is " << R << std::endl;

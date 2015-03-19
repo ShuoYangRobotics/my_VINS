@@ -44,6 +44,8 @@ public:
     Eigen::Vector2f h(Eigen::Vector3f ptr);
     
     Eigen::MatrixXf Jh(Eigen::Vector3f ptr);
+    
+    Eigen::Vector3f triangulate(Eigen::MatrixXf measure, Eigen::MatrixXf pose);
 };
 
 #endif
