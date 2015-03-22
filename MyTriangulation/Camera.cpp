@@ -141,6 +141,7 @@ MatrixXf DistortCamera::Jh(Vector3f ptr)
 // measure is 2f
 Vector3f DistortCamera::triangulate(MatrixXf measure, MatrixXf pose)
 {
+    Vector3f return_pose = Vector3f(0.0f, 0.0f, 0.0f);
     int num_item = (int)pose.cols();
     
     MatrixXf q_list = MatrixXf::Zero(4, num_item);
@@ -154,8 +155,8 @@ Vector3f DistortCamera::triangulate(MatrixXf measure, MatrixXf pose)
     Matrix3f R_c0ci, R_cic0;
     Vector3f t_c0ci, t_cic0;
     
-    q_list.block<4,1>(0, 0) = Vector4f(1,0,0,0);
-    t_list.block<3,1>(0, 0) = t_wci;
+    q_list.col(0) = Vector4f(1,0,0,0);
+    t_list.col(0) = t_wci;
     
     // TODO: rewrite this piece use quaternion
     for (int i=1; i<num_item; i++)
@@ -168,12 +169,64 @@ Vector3f DistortCamera::triangulate(MatrixXf measure, MatrixXf pose)
         R_cic0 = R_c0ci.transpose();
         t_cic0 = - R_c0ci.transpose()*t_c0ci;
         
-        q_list.block<4,1>(0,i) = R_to_quaternion(R_cic0);
-        t_list.block<3,1>(0,i) = t_cic0;
+        q_list.col(i) = R_to_quaternion(R_cic0);
+        t_list.col(i) = t_cic0;
     }
     
+//    cout << "q_list is" << endl << q_list << endl;
+//    cout << "t_list is" << endl << t_list << endl;
     
-    return t_wc0;
+    // init estimation
+    Vector3f theta = Vector3f(0.1f, 0.1f, 0.1f);
+    Vector3f g_ptr = Vector3f(0.0f, 0.0f, 0.0f);
+    VectorXf f = VectorXf::Zero(num_item*2);
+    MatrixXf J = MatrixXf::Zero(num_item*2,3);
+    Matrix3f Jg = Matrix3f::Zero(3,3);
+    MatrixXf Ji;
+    MatrixXf A;
+    MatrixXf b;
+    for (int itr = 0; itr < 100; itr++)
+    {
+        Vector3f tmp_theta = Vector3f(theta(0), theta(1), 1);
+        for (int i = 0; i < num_item; i++)
+        {
+            R_cic0 = quaternion_to_R(q_list.col(i));
+            g_ptr = R_cic0*tmp_theta + theta(2)*t_list.col(i);
+            
+            f.segment(i*2, 2) = measure.col(i) - h(g_ptr);
+            
+            Jg.col(0) = R_cic0.col(0);
+            Jg.col(1) = R_cic0.col(1);
+            Jg.col(2) = t_list.col(i);
+            
+            Ji = -Jh(g_ptr) * Jg;
+            J.block<2,3>(i*2,0) = Ji;
+        }
+        
+        if (f.norm() < 5.0f)
+        {
+            break;
+        }
+        A = J.transpose()*J;
+        b = J.transpose()*f;
+        
+        
+//        cout << "f is" << endl << f << endl;
+//        cout << "J is" << endl << J << endl;
+//        cout << "solve is" << endl << A.ldlt().solve(b) << endl;
+        
+        //theta = theta - A.ldlt().solve(b);
+        theta = theta - A.colPivHouseholderQr().solve(b);
+        
+    }
+    
+    return_pose(0) = theta(0)/theta(2);
+    return_pose(1) = theta(1)/theta(2);
+    return_pose(2) = 1.0f/theta(2);
+    
+    return_pose = R_wc0*return_pose+t_wc0;
+    
+    return return_pose;
     
 }
 

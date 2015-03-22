@@ -20,10 +20,18 @@ class MSCKF {
     VectorXf errorState;    // dimension 3 + 3 + 3 + 3 + 3 = 15
     VectorXf extrinsicP;    // p_bc, dimension 3
     VectorXf* slidingWindow;  // body pose sliding window, each with dimension 10
+
+    float current_time;
+    
+    Vector3f prev_w, curr_w;
+    Vector3f prev_a, curr_a;    // IMU measurements
+    
     
 public:
     MSCKF();
     ~MSCKF();
+    
+    void processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity);
 };
 
 #endif /* defined(__MyTriangulation__MSCKF__) */

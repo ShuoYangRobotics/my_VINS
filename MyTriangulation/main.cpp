@@ -51,5 +51,53 @@ int main(int argc, const char * argv[]) {
     omega = omega_mtx(ptr);
     
     std::cout << "omega is " << omega << std::endl;
+    
+    
+    MatrixXf measure(2,5);
+    MatrixXf pose(7,5);
+    measure <<
+    497.6229,  493.1491,  489.0450,  478.8504,  466.8726,
+    371.0596,  366.5853,  362.4808,  352.2850,  340.3059
+    ;
+    pose<<
+    0.777986724316206,   0.838539246498940,   0.775194258937213,   0.831502026804405,   0.770011014887736,
+    0.625646233952092,   0.489266453739099,   0.435311151332881,   0.225961749519687,   0.059184118324008,
+    -0.057475618563915,  -0.239729575410618,  -0.457796966390153,  -0.507489573463504,  -0.635279684146888,
+    0,                   0,                   0,                   0,                   0,
+    1.098427340189829,   5.357568053111257,   9.092272676622571,  11.936962300957290,  13.613178885567471,
+    13.956842672263791,  12.934313455158014,  10.645683518400434,   7.314979906023285,   3.268235093982677,
+    1.414213562373095,  -1.414213562373095,   1.414213562373095,  -1.414213562373094,   1.414213562373095
+    ;
+    
+    
+    std::cout << "measure is " << std::endl << measure << std::endl;
+    std::cout << "pose is " << std::endl<< pose << std::endl;
+    
+    Vector3f ptr_pose = cam.triangulate(measure, pose);
+    std::cout << "ptr_pose is " << std::endl<< ptr_pose << std::endl;
+    
+    
+    Quaternionf q2(1.0, 0.0, 0.0, 0.0);
+    Quaternionf q3(1.0, 0.0, 0.0, 0.0);
+    Quaternionf dq(1,
+                   0.7,
+                   0.7,
+                   0.7);
+    dq.w() = 1 - dq.vec().transpose()*dq.vec();
+    q2 = (q2*dq).normalized();
+    std::cout << "q2 is " << std::endl<< q2.w() << q2.x() << q2.y() << q2.z() << std::endl;
+    
+    Vector3f w_prev(1.4,1.4,1.4);
+    Vector3f w_curr(1.4,1.4,1.4);
+    Vector4f dq2 = delta_quaternion(w_prev, w_curr, 1.0f);
+    dq.w() = dq2(3);
+    dq.x() = -dq2(0);
+    dq.y() = -dq2(1);
+    dq.z() = -dq2(2);
+    q3 = (q3 * dq).normalized();
+    std::cout << "q3 is " << std::endl<< q3.w() << q3.x() << q3.y() << q3.z() << std::endl;
+    
+    Matrix3f ff = q3.vec();
+    
     return 0;
 }

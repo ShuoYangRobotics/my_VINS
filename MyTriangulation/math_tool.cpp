@@ -9,10 +9,10 @@
 #include "math_tool.h"
 
 /* my quaternion convention
-    w = q(0);
-    x = q(1);
-    y = q(2);
-    z = q(3);
+    x = q(0);
+    y = q(1);
+    z = q(2);
+    w = q(3);
  */
 
 
@@ -115,7 +115,7 @@ Matrix4f omega_mtx(const Vector3f& w)
 Vector4f delta_quaternion(const Vector3f& w_prev, const Vector3f& w_curr, const float dt)
 {
     Vector4f q, q0, k1, k2, k3, k4;
-    q0 << 1.0f, 0.0f, 0.0f, 0.0f;
+    q0 << 0.0f, 0.0f, 0.0f, 1.0f;
     
     k1 = 0.5f * omega_mtx(w_prev) * q0;
     k2 = 0.5f * omega_mtx(0.5*(w_prev+w_curr)) * (q0 + 0.5*dt*k1);
