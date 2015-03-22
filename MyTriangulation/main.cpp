@@ -97,7 +97,7 @@ int main(int argc, const char * argv[]) {
     q3 = (q3 * dq).normalized();
     std::cout << "q3 is " << std::endl<< q3.w() << q3.x() << q3.y() << q3.z() << std::endl;
     
-    Matrix3f ff = q3.vec();
+    //Matrix3f ff = q3.vec();
     
     return 0;
 }
