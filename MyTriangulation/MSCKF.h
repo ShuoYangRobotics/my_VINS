@@ -11,6 +11,10 @@
 
 #include <iostream>
 #include <cmath>
+#include <list>
+#include <algorithm>
+#include <vector>
+#include <numeric>
 #include <Eigen/Dense>
 using namespace Eigen;
 using namespace std;
@@ -20,10 +24,14 @@ class MSCKF {
     VectorXf nominalState;  // dimension 4 + 3 + 3 + 3 + 3 = 16
     VectorXf errorState;    // dimension 3 + 3 + 3 + 3 + 3 = 15
     VectorXf extrinsicP;    // p_bc, dimension 3
-    VectorXf* slidingWindow;  // body pose sliding window, each with dimension 10
+    VectorXf fullState;      // dimension 15+3+10m
 
     /* covariance */
     MatrixXf errorCovariance;
+    MatrixXf phi;
+    
+    /* noise matrix */
+    MatrixXf Nc;
     
     
     float current_time;
@@ -45,7 +53,9 @@ public:
     ~MSCKF();
     
     void resetError();
+    void setNoiseMatrix(float dgc, float dac, float dwgc, float dwac);
     void processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity);
+    void processImage(const vector<pair<int, Vector3d>> &image, vector<pair<Vector3d, Vector3d>> &corres);
 };
 
 #endif /* defined(__MyTriangulation__MSCKF__) */
