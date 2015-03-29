@@ -7,6 +7,7 @@
 //
 
 #include <iostream>
+#include <map>
 #include <Eigen/Dense>
 
 #include "Camera.h"
@@ -98,6 +99,17 @@ int main(int argc, const char * argv[]) {
     std::cout << "q3 is " << std::endl<< q3.w() << q3.x() << q3.y() << q3.z() << std::endl;
     
     //Matrix3f ff = q3.vec();
+    std::map<int,std::string> mymap;
+    mymap[100]="an element";
+    mymap[200]="another element";
+    mymap[300]=mymap[200];
     
+    std::cout << "mymap[100] is " << mymap[100] << '\n';
+    std::cout << "mymap[200] is " << mymap[200] << '\n';
+    std::cout << "mymap[300] is " << mymap[300] << '\n';
+    std::cout << "mymap[301] is " << mymap[301] << '\n';
+    
+    std::cout << "mymap now contains " << mymap.size() << " elements.\n";
+
     return 0;
 }
