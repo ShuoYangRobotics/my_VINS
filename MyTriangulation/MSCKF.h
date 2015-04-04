@@ -19,15 +19,29 @@
 using namespace Eigen;
 using namespace std;
 
-class MSCKF {
+struct SlideState
+{
+    Vector4f q;
+    Vector3f p;
+    Vector3f v;
+};
+
+class MSCKF
+{
+private:
     /* states */
     VectorXf nominalState;  // dimension 4 + 3 + 3 + 3 + 3 = 16
     VectorXf errorState;    // dimension 3 + 3 + 3 + 3 + 3 = 15
     VectorXf extrinsicP;    // p_bc, dimension 3
-    VectorXf fullState;      // dimension 15+3+10m
+    
+    VectorXf fullNominalState;
+    VectorXf fullErrorState;
+    
+    list<SlideState> slidingWindow;
 
     /* covariance */
     MatrixXf errorCovariance;
+    MatrixXf fullErrorCovariance;
     MatrixXf phi;
     
     /* noise matrix */
@@ -53,9 +67,20 @@ public:
     ~MSCKF();
     
     void resetError();
+    void setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vector3f ba, Vector3f pbc);
     void setNoiseMatrix(float dgc, float dac, float dwgc, float dwac);
     void processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity);
     void processImage(const vector<pair<int, Vector3d>> &image, vector<pair<Vector3d, Vector3d>> &corres);
+    
+    
+    void addSlideState();
+    void removeSlideState(int index, int total);
+    
+    /* debug outputs */
+    void printNominalState(bool is_full);
+    void printErrorState(bool is_full);
+    void printSlidingWindow();
+    void printErrorCovariance(bool is_full);
 };
 
 #endif /* defined(__MyTriangulation__MSCKF__) */

@@ -13,7 +13,14 @@
 #include "Camera.h"
 #include "math_tool.h"
 #include "MSCKF.h"
+#include "FeatureManager.h"
 using namespace Eigen;
+
+// global variable to test
+FeatureManager myManager;
+MSCKF my_kf;
+void featureManagerTest();
+void KFtest();
 
 int main(int argc, const char * argv[]) {
     DistortCamera cam;
@@ -47,7 +54,6 @@ int main(int argc, const char * argv[]) {
     std::cout << "q is " << q << std::endl;
     std::cout << "R is " << R << std::endl;
     
-    MSCKF my_kf;
     Matrix4f omega;
     omega = omega_mtx(ptr);
     
@@ -109,7 +115,70 @@ int main(int argc, const char * argv[]) {
     std::cout << "mymap[300] is " << mymap[300] << '\n';
     std::cout << "mymap[301] is " << mymap[301] << '\n';
     
+    std::cout << "find 301"  << mymap.find(301)->second << '\n';
+    std::cout << "find 302"  << mymap.find(302)->second << '\n';
+    
     std::cout << "mymap now contains " << mymap.size() << " elements.\n";
 
+    //featureManagerTest();
+    KFtest();
     return 0;
+}
+
+void KFtest()
+{
+    Vector4f q(1.0f, 0.0f, 0.0f, 0.0f);
+    Vector3f p(3.0f, 3.0f, 4.5f);
+    Vector3f v(1.3f, 1.4f, 1.5f);
+    Vector3f bg(0.0f ,0.0f, 0.0f);
+    Vector3f ba(0.0f ,0.0f, 0.0f);
+    Vector3f pbc(10.0f ,0.0f, 0.0f);
+    my_kf.setNominalState(q, p, v, bg, ba, pbc);
+    my_kf.printNominalState(true);
+    my_kf.printErrorCovariance(true);
+    my_kf.addSlideState();
+    my_kf.printNominalState(true);
+    my_kf.printErrorCovariance(true);
+    my_kf.printSlidingWindow();
+    
+    v = Vector3f(1.9f, 2.0f, 2.1f);
+    my_kf.setNominalState(q, p, v, bg, ba, pbc);
+    
+    my_kf.printNominalState(true);
+    my_kf.printErrorCovariance(true);
+    my_kf.addSlideState();
+    my_kf.printSlidingWindow();
+    
+    my_kf.printNominalState(true);
+    my_kf.printErrorCovariance(true);
+    my_kf.removeSlideState(0, 2);
+    
+    my_kf.printNominalState(true);
+    my_kf.printErrorCovariance(true);
+    my_kf.printSlidingWindow();
+    my_kf.removeSlideState(0, 1);
+    
+    my_kf.printErrorCovariance(true);
+    my_kf.processIMU(1.0f, Vector3f(0.9f, 0.9f, 0.9f), Vector3f(0.5f, 0.0f, 0.0f));
+    my_kf.processIMU(1.4f, Vector3f(0.9f, 0.9f, 0.9f), Vector3f(0.5f, 0.0f, 0.0f));
+    my_kf.printErrorCovariance(true);
+}
+
+void foo()
+{
+    SlideState state;
+    Vector4f q(1.0f, 0.5f, 0.5f, 0.5f);
+    Vector3f p(3.0f, 3.0f, 4.5f);
+    Vector3f v(1.3f, 1.4f, 1.5f);
+    state.p = p;
+    state.q = q;
+    state.v = v;
+    
+    myManager.addSlideState(state);
+}
+void featureManagerTest()
+{
+    
+    foo();
+    myManager.debugOut();
 }
