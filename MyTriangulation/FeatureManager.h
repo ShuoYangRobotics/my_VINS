@@ -37,7 +37,8 @@ class FeatureRecord
         bool is_outlier;
         int start_frame;
     
-        FeatureRecord(const Vector3f &_feature_point):
+        FeatureRecord(int _start_frame, const Vector3f &_feature_point):
+        start_frame(_start_frame),
         feature_points {FeatureInformation(_feature_point)}
         {
             is_used = false;
@@ -46,23 +47,23 @@ class FeatureRecord
         }
 };
 
-class FeatureManager
-{
-    public:
-        FeatureManager();
-        void addFeatures        (const vector<pair<int, Vector3d>> &image, SlideState _state);
-    
-        void addSlideState      (SlideState _state);
-        void removeSlideState   (int index);
-        void debugOut();
-    
-    private:
-        list<SlideState> slidingWindow;  // body pose sliding window, each with dimension 10
-        map<int, FeatureRecord> feature_record_dict;
-        list<pair<int, Vector3f>> triangulate_ptrs;
-        int current_frame;               // indicates the number of sliding state
-    
-    
-};
+//class FeatureManager
+//{
+//    public:
+//        FeatureManager();
+//        void addFeatures        (const vector<pair<int, Vector3d>> &image, SlideState _state);
+//    
+//        void addSlideState      (SlideState _state);
+//        void removeSlideState   (int index);
+//        void debugOut();
+//    
+//    private:
+//        list<SlideState> slidingWindow;  // body pose sliding window, each with dimension 10
+//        map<int, FeatureRecord> feature_record_dict;
+//        list<pair<int, Vector3f>> triangulate_ptrs;
+//        int current_frame;               // indicates the number of sliding state
+//    
+//    
+//};
 
 #endif /* defined(__MyTriangulation__FeatureManager__) */

@@ -154,9 +154,57 @@ void MSCKF::processIMU(float t, Vector3f linear_acceleration, Vector3f angular_v
 
 void MSCKF::processImage(const vector<pair<int, Vector3d>> &image, vector<pair<Vector3d, Vector3d>> &corres)
 {
+    printf("input feature: %lu", image.size());
+    
+    // init is_lost
+    for (auto & item : feature_record_dict)
+    {
+        item.second.is_lost = true;
+    }
+    
+    // add sliding state
+    // removeSlideState if the window is full already
+    if (current_frame == SLIDING_WINDOW_SIZE)
+    {
+        removeSlideState(1, SLIDING_WINDOW_SIZE);
+        removeFrameFeatures(1);
+        current_frame--;
+    }
+    
+    addSlideState();
+    addFeatures(image);
 
-    //bool ok = f_manager.addFeatureCheckParallax(frame_count, image, frame_count < WINDOW_SIZE);
-
+    //check is_lost
+    MatrixXf measure_mtx;
+    MatrixXf pose_mtx;
+    for (auto & item : feature_record_dict)
+    {
+        if (item.second.is_lost == true)
+        {
+            std::vector<FeatureInformation>::iterator itr_f = item.second.feature_points.begin();
+            std::list<SlideState>::iterator           itr_s = slidingWindow.begin();
+            for (int i = item.second.start_frame; i <= current_frame; i++)
+            {
+                // construct measure
+                
+            
+                // construct pose
+                
+                
+                itr_f++;
+                itr_s++;
+            }
+            item.second.is_used = true;
+        }
+    }
+    
+    
+    
+    // remove all is_used == true sliding state
+    
+    
+    // move to next frame by the end
+    current_frame++;
 }
 
 void MSCKF::addSlideState()
@@ -194,9 +242,32 @@ void MSCKF::addSlideState()
         Jpi*fullErrorCovariance*Jpi.transpose();
     
     fullErrorCovariance = tmpCovariance;
-    
+}
+
+void MSCKF::addFeatures(const vector<pair<int, Vector3d>> &image)
+{
+    // add features to the feature record
+    for (auto & id_pts : image)
+    {
+        int   id = id_pts.first;
+        float x = id_pts.second(0);
+        float y = id_pts.second(1);
+        float z = id_pts.second(2);
+        
+        // this is a new feature record
+        if (feature_record_dict.find(id) == feature_record_dict.end())
+        {
+            feature_record_dict[id] = FeatureRecord(current_frame, Vector3f(x, y, z));
+        }
+        else // append to existing record
+        {
+            feature_record_dict[id].feature_points.push_back(FeatureInformation(Vector3f(x, y, z)));
+            feature_record_dict[id].is_lost = false;
+        }
+    }
     
 }
+
 
 // CAUTION: make sure this function is not called at wrong time, and make sure that the index is valid
 //          this function does not check index validity yet
@@ -275,6 +346,27 @@ void MSCKF::removeSlideState(int index, int total)
         itr++;
     }
     slidingWindow.erase(itr);
+}
+
+void MSCKF::removeFrameFeatures(int index)
+{
+    for (auto & item : feature_record_dict)
+    {
+        if (item.second.start_frame < index)
+        {
+            item.second.feature_points.erase(
+                item.second.feature_points.begin()+(index-item.second.start_frame)
+            );
+        }
+        else if (item.second.start_frame == index)
+        {
+            item.second.feature_points.erase(item.second.feature_points.begin());
+        }
+        else
+        {
+            item.second.start_frame = item.second.start_frame - 1;
+        }
+    }
 }
 
 

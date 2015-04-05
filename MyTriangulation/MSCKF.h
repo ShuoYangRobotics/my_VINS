@@ -19,6 +19,9 @@
 using namespace Eigen;
 using namespace std;
 
+#include "FeatureManager.h"
+class FeatureRecord;
+
 struct SlideState
 {
     Vector4f q;
@@ -47,8 +50,13 @@ private:
     /* noise matrix */
     MatrixXf Nc;
     
+    /* feature management */
+    map<int, FeatureRecord> feature_record_dict;
+    list<pair<int, Vector3f>> triangulate_ptrs;
     
-    float current_time;
+    
+    float current_time;     // indicates the current time stamp
+    int   current_frame;    // indicates the current frame in slidingWindow
     
     /* IMU measurements */
     Vector3f prev_w, curr_w;
@@ -62,6 +70,8 @@ private:
     Vector3f gyro_bias;
     Vector3f acce_bias;
     
+    
+    
 public:
     MSCKF();
     ~MSCKF();
@@ -72,9 +82,12 @@ public:
     void processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity);
     void processImage(const vector<pair<int, Vector3d>> &image, vector<pair<Vector3d, Vector3d>> &corres);
     
-    
     void addSlideState();
     void removeSlideState(int index, int total);
+    void addFeatures(const vector<pair<int, Vector3d>> &image);
+    void removeFrameFeatures(int index);
+    void removeUsedFeatures();
+    
     
     /* debug outputs */
     void printNominalState(bool is_full);

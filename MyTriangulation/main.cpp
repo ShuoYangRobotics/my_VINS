@@ -17,7 +17,7 @@
 using namespace Eigen;
 
 // global variable to test
-FeatureManager myManager;
+//FeatureManager myManager;
 MSCKF my_kf;
 void featureManagerTest();
 void KFtest();
@@ -174,11 +174,11 @@ void foo()
     state.q = q;
     state.v = v;
     
-    myManager.addSlideState(state);
+    //myManager.addSlideState(state);
 }
 void featureManagerTest()
 {
     
     foo();
-    myManager.debugOut();
+    //myManager.debugOut();
 }
