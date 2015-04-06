@@ -13,7 +13,7 @@
 #include "Camera.h"
 #include "math_tool.h"
 #include "MSCKF.h"
-#include "FeatureManager.h"
+#include "FeatureRecord.h"
 using namespace Eigen;
 
 // global variable to test
@@ -120,8 +120,29 @@ int main(int argc, const char * argv[]) {
     
     std::cout << "mymap now contains " << mymap.size() << " elements.\n";
 
+    int k = 0;
+    for (int i = 0; i<0;i++)
+        k++;
+    std::cout<<"kkkkk" << k<<std::endl;
     //featureManagerTest();
-    KFtest();
+    //KFtest();
+    
+//    MatrixXd A = pose.cast<double>();
+//    HouseholderQR<MatrixXd> qr(A);
+//    MatrixXd RR = qr.matrixQR().triangularView<Upper>();
+//    MatrixXd Q = qr.householderQ();
+//    std::cout << RR << "\n";
+//    std::cout << Q << "\n";
+//    MatrixXd D = Q*RR-A;
+        MatrixXf A = pose;
+        HouseholderQR<MatrixXf> qr(A);
+        MatrixXf RR = qr.matrixQR().triangularView<Upper>();
+        MatrixXf Q = qr.householderQ();
+        std::cout << RR << "\n";
+        std::cout << Q << "\n";
+        MatrixXf D = Q*RR-A;
+
+    std::cout << "\n" << (Q*RR-A).norm() << "  " << sqrt((D.adjoint()*D).trace()) << "\n";
     return 0;
 }
 
@@ -132,8 +153,10 @@ void KFtest()
     Vector3f v(1.3f, 1.4f, 1.5f);
     Vector3f bg(0.0f ,0.0f, 0.0f);
     Vector3f ba(0.0f ,0.0f, 0.0f);
-    Vector3f pbc(10.0f ,0.0f, 0.0f);
-    my_kf.setNominalState(q, p, v, bg, ba, pbc);
+    Vector3f pcb(10.0f ,0.0f, 0.0f);
+    my_kf.setCalibParam(pcb, 365.07984, 365.12127, 381.0196, 254.4431,
+                            -2.842958e-1, 8.7155025e-2, -1.4602925e-4, -6.149638e-4, -1.218237e-2);
+    my_kf.setNominalState(q, p, v, bg, ba);
     my_kf.printNominalState(true);
     my_kf.printErrorCovariance(true);
     my_kf.addSlideState();
@@ -142,7 +165,7 @@ void KFtest()
     my_kf.printSlidingWindow();
     
     v = Vector3f(1.9f, 2.0f, 2.1f);
-    my_kf.setNominalState(q, p, v, bg, ba, pbc);
+    my_kf.setNominalState(q, p, v, bg, ba);
     
     my_kf.printNominalState(true);
     my_kf.printErrorCovariance(true);

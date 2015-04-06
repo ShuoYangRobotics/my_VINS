@@ -14,11 +14,11 @@
 
 #ifndef DEBUG_FLAG
 
-#define SLIDING_WINDOW_SIZE 10
-#define NOMINAL_STATE_SIZE   16
-#define ERROR_STATE_SIZE     15
-#define NOMINAL_POSE_STATE_SIZE 10
-#define ERROR_POSE_STATE_SIZE 9
+#define SLIDING_WINDOW_SIZE 10     // 4 + 3 + 3
+#define NOMINAL_STATE_SIZE   16    // 4 + 3 + 3 + 3 + 3
+#define ERROR_STATE_SIZE     15    // 3 + 3 + 3 + 3 + 3
+#define NOMINAL_POSE_STATE_SIZE 10 // 4 + 3 + 3
+#define ERROR_POSE_STATE_SIZE 9    // 3 + 3 + 3
 
 #else
 

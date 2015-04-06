@@ -128,3 +128,26 @@ Vector4f delta_quaternion(const Vector3f& w_prev, const Vector3f& w_curr, const 
     
     return q;
 }
+
+Vector4f quaternion_correct(Vector4f q, Vector3f d_theta)
+{
+    Vector4f corrected_q;
+    Quaternionf qf(
+                   q(3),
+                   q(0),
+                   q(1),
+                   q(2)
+                   );
+    Quaternionf dq(
+                   1,
+                   0.5*d_theta(0),
+                   0.5*d_theta(1),
+                   0.5*d_theta(2)
+                   );
+    
+    qf = (qf * dq).normalized();
+    corrected_q <<
+    qf.x(),qf.y(),qf.z(),qf.w();
+    
+    return corrected_q;
+}

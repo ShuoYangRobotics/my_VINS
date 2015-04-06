@@ -34,6 +34,27 @@ MSCKF::MSCKF()
     setNoiseMatrix(0.1f, 0.1f, 0.1f, 0.1f);
     
     current_time = -1.0f;
+    
+    cam.setImageSize(480, 752);
+    
+    cam.setIntrinsicMtx(365.07984, 365.12127, 381.0196, 254.4431);
+    cam.setDistortionParam(-2.842958e-1,
+                           8.7155025e-2,
+                           -1.4602925e-4,
+                           -6.149638e-4,
+                           -1.218237e-2);
+    
+    current_frame = 0;
+    
+    R_cb <<
+        0, -1, 0,
+        0,  0, 1,
+       -1,  0, 0;
+//    Ric <<
+//    0, 0, -1,
+//    -1, 0, 0,
+//    0, 1, 0;
+//    Tic << 0.0, -0.14, 0.02;
 }
 
 MSCKF::~MSCKF()
@@ -46,11 +67,11 @@ void MSCKF::resetError()
     int errorStateLength = (int)fullErrorState.size();
     
     errorState = VectorXf::Zero(ERROR_STATE_SIZE);
-    errorCovariance = MatrixXf::Identity(ERROR_STATE_SIZE,ERROR_STATE_SIZE);
+    //errorCovariance = MatrixXf::Identity(ERROR_STATE_SIZE,ERROR_STATE_SIZE);
     
     // CAUTION: their sizes are not fixed
     fullErrorState = VectorXf::Zero(errorStateLength);
-    fullErrorCovariance = MatrixXf::Identity(errorStateLength, errorStateLength);
+    //fullErrorCovariance = MatrixXf::Identity(errorStateLength, errorStateLength);
     phi = MatrixXf::Identity(ERROR_STATE_SIZE,ERROR_STATE_SIZE);
 }
 
@@ -62,14 +83,43 @@ void MSCKF::setNoiseMatrix(float dgc, float dac, float dwgc, float dwac)
     Nc.block<3,3>(12, 12) = Matrix3f::Identity()*dwac;
 }
 
-void MSCKF::setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vector3f ba, Vector3f pbc)
+void MSCKF::setMeasureNoise(float _noise)
+{
+    measure_noise = _noise;
+}
+
+void MSCKF::setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vector3f ba)
 {
     fullNominalState.segment(0, 4) = q;
     fullNominalState.segment(4, 3) = p;
     fullNominalState.segment(7, 3) = v;
     fullNominalState.segment(10, 3) = bg;
     fullNominalState.segment(13, 3) = ba;
-    fullNominalState.segment(16, 3) = pbc;
+    
+    nominalState = fullNominalState.head(NOMINAL_STATE_SIZE);
+}
+
+void MSCKF::setCalibParam(Vector3f p_cb, float fx, float fy, float ox, float oy, float k1, float k2, float p1, float p2, float k3)
+{
+    fullNominalState.segment(16, 3) = p_cb;
+    cam.setIntrinsicMtx(fx, fy, ox, oy);
+    cam.setDistortionParam(k1, k2, p1, p2, k3);
+    
+}
+
+void MSCKF::setIMUCameraRotation(Matrix3f _R_cb)
+{
+    R_cb = _R_cb;
+}
+
+void MSCKF::correctNominalState(VectorXf delta)
+{
+    fullNominalState.segment(0, 4) = quaternion_correct(fullNominalState.segment(0, 4), delta.segment(0, 3));
+    fullNominalState.segment(4, 3) = fullNominalState.segment(4, 3)+delta.segment(3, 3);
+    fullNominalState.segment(7, 3) = fullNominalState.segment(7, 3)+delta.segment(6, 3);
+    fullNominalState.segment(10, 3) = fullNominalState.segment(10, 3)+delta.segment(9, 3);
+    fullNominalState.segment(13, 3) = fullNominalState.segment(13, 3)+delta.segment(12, 3);;
+    
     
     nominalState = fullNominalState.head(NOMINAL_STATE_SIZE);
 }
@@ -159,7 +209,10 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image, vector<pair<V
     // init is_lost
     for (auto & item : feature_record_dict)
     {
-        item.second.is_lost = true;
+        if (item.second.is_used == false)
+        {
+            item.second.is_lost = true;
+        }
     }
     
     // add sliding state
@@ -172,35 +225,171 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image, vector<pair<V
     }
     
     addSlideState();
-    addFeatures(image);
+    addFeatures(image);     // is_lost modified here
 
-    //check is_lost
+    //check is_lost to get measurement
     MatrixXf measure_mtx;
     MatrixXf pose_mtx;
+    Vector3f ptr_pose;
+    
+    // clear these two lists
+    residual_list.clear();
+    H_mtx_list.clear();
+    H_mtx_block_size_list.clear();
+    
+    int num_measure = 0;
+    int row_H = 0;
     for (auto & item : feature_record_dict)
     {
         if (item.second.is_lost == true)
         {
-            std::vector<FeatureInformation>::iterator itr_f = item.second.feature_points.begin();
-            std::list<SlideState>::iterator           itr_s = slidingWindow.begin();
-            for (int i = item.second.start_frame; i <= current_frame; i++)
+            if (current_frame-item.second.start_frame>=3)
             {
-                // construct measure
+                /* 1. prepare to do triangulation */
+                std::vector<FeatureInformation>::iterator itr_f = item.second.feature_points.begin();
+                std::list<SlideState>::iterator           itr_s = slidingWindow.begin();
+                for (int i = 0; i < item.second.start_frame; i++)
+                {
+                    itr_s ++;
+                }
                 
-            
-                // construct pose
+                int num_frame = current_frame-item.second.start_frame;
                 
+                measure_mtx = MatrixXf::Zero(2,num_frame);
+                pose_mtx = MatrixXf::Zero(7,num_frame);
                 
-                itr_f++;
-                itr_s++;
+                for (int i = item.second.start_frame; i < current_frame; i++)
+                {
+                    // construct measure
+                    measure_mtx(0,i-item.second.start_frame) = itr_f->point.x();
+                    measure_mtx(1,i-item.second.start_frame) = itr_f->point.y();
+                
+                    // construct pose
+                    pose_mtx.block<4,1>(0,i-item.second.start_frame) = itr_s->q;
+                    pose_mtx.block<3,1>(4,i-item.second.start_frame) = itr_s->p;
+                    
+                    itr_f++;
+                    itr_s++;
+                }
+                
+                ptr_pose = cam.triangulate(measure_mtx, pose_mtx);
+                // check ptr_pose validity (it cannot be strange value)
+                bool is_valid = true;
+                // TODO: can add more validity check (for example, the ptr_pose should be in front of the camera)
+                for (int i=0; i<3;i++)
+                {
+                    if (ptr_pose(i)!=ptr_pose(i))
+                        is_valid = false;
+                }
+                
+                /* 2. calculate r and H */
+                if (is_valid)
+                {
+                    num_measure++;
+                    row_H += (2*num_frame - 3); // after feature error marginalization
+                    // construct H matrix use ptr_pose, item.second.start_frame and current_frame
+                    VectorXf ri;
+                    MatrixXf Hi;
+                    getResidualH(ri, Hi, ptr_pose, measure_mtx, pose_mtx, item.second.start_frame);
+                    
+                    // TODO: outlier reject: Chi-square test
+                    
+                    residual_list.push_back(ri);
+                    H_mtx_list.push_back(Hi);
+                    H_mtx_block_size_list.push_back(2*num_frame - 3);
+                    
+                    item.second.is_used = true;
+                }
             }
-            item.second.is_used = true;
+            else
+            {
+                // not enough number of frame, does not generate measure
+                item.second.is_used = true;
+            }
         }
     }
     
+    if (num_measure == 0) // this may due to hovering
+    {
+        
+    }
+    else
+    {
+        int col_H = (int)fullErrorState.size();
+        // use ri and Hi to do KF update
+        /* 1. construct H matrix */
+        MatrixXd H = MatrixXd::Zero(row_H, col_H);
+        VectorXf r = VectorXf::Zero(row_H);
+        std::list<MatrixXf>::iterator itr_H = H_mtx_list.begin();
+        std::list<VectorXf>::iterator itr_r = residual_list.begin();
+        std::list<int>::iterator itr_H_size = H_mtx_block_size_list.begin();
+        int row_H_count = 0;
+        for (int i = 0; i < num_measure; i++)
+        {
+            H.block(row_H_count, 0, *itr_H_size, col_H) = (*itr_H).cast<double>();
+            r.segment(row_H_count, *itr_H_size) = (*itr_r);
+            row_H_count += *itr_H_size;
+            
+            itr_H++;
+            itr_r++;
+            itr_H_size++;
+        }
+        
+        /* 2. decompose H */
+        HouseholderQR<MatrixXd> qr(H);
+        MatrixXd R = qr.matrixQR().triangularView<Upper>();
+        MatrixXd Q = qr.householderQ();
+        
+        MatrixXf Th = R.topRows(col_H).cast<float>();
+        MatrixXf Q1 = Q.leftCols(col_H).cast<float>();
+        
+        /* 3. calculate Kalman gain */
+        MatrixXf Rq = MatrixXf::Identity(col_H, col_H) * measure_noise*measure_noise;
+        MatrixXf tmpK = (Th*fullErrorCovariance*Th.transpose() + Rq).inverse();
+        MatrixXf K = fullErrorCovariance*Th.transpose()*tmpK;
+        
+        /* 4. update error covariance */
+        fullErrorCovariance = (MatrixXf::Identity(col_H, col_H) - K*Th)*fullErrorCovariance;
+        
+        VectorXf delta_x = K*Q1.transpose()*r;
+        correctNominalState(delta_x);
+    }
     
     
     // remove all is_used == true sliding state
+    int feature_count;
+    int used_count;
+    list<int> frame_to_remove;
+    frame_to_remove.clear();
+    for (int i=0; i<=current_frame;i++)
+    {
+        feature_count = 0;
+        used_count = 0;
+        for (auto & item : feature_record_dict)
+        {
+            if (item.second.start_frame < i)
+            {
+                feature_count++;
+            }
+            if (item.second.is_used == true)
+            {
+                used_count++;
+            }
+        }
+        if (feature_count == used_count) // all features under this state are used
+        {
+            frame_to_remove.push_back(i);
+        }
+        
+    }
+    int offset = 0;
+    for (auto &frame:frame_to_remove)  // frame is ordered
+    {
+        removeSlideState(frame-offset, current_frame+1);
+        removeFrameFeatures(frame-offset);
+        current_frame--;
+        offset++;
+    }
     
     
     // move to next frame by the end
@@ -350,6 +539,8 @@ void MSCKF::removeSlideState(int index, int total)
 
 void MSCKF::removeFrameFeatures(int index)
 {
+    list<int> id_to_remove;
+    id_to_remove.clear();
     for (auto & item : feature_record_dict)
     {
         if (item.second.start_frame < index)
@@ -366,7 +557,68 @@ void MSCKF::removeFrameFeatures(int index)
         {
             item.second.start_frame = item.second.start_frame - 1;
         }
+        
+        if (item.second.feature_points.size() == 0)
+        {
+            id_to_remove.push_back(item.first);
+        }
     }
+    // remove feature record with 0 feature information
+    for (auto &id : id_to_remove)
+    {
+        feature_record_dict.erase(id);
+    }
+}
+
+Vector2f MSCKF::projectPoint(Vector3f feature_pose, Matrix3f R_gb, Vector3f p_gb, Vector3f p_cb)
+{
+    Vector2f zij;
+    zij = cam.h(R_cb*R_gb.transpose()*(feature_pose - p_gb)+p_cb);
+    
+    return zij;
+}
+
+void MSCKF::getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, MatrixXf measure, MatrixXf pose_mtx, int frame_offset)
+{
+    int num_frame = (int)pose_mtx.cols();
+    int errorStateLength = (int)fullErrorState.size();
+    
+    ri = VectorXf::Zero(2*num_frame);
+    Hi = MatrixXf::Zero(2*num_frame, errorStateLength);    // Hi cols == error state length
+    
+    MatrixXf HxBj, Hc;
+    MatrixXf Mij, tmp39;
+    
+    MatrixXd Hfi;
+    MatrixXf Hf; // use double precision to increase numerial result
+    Hfi = MatrixXd::Zero(2*num_frame, 3);
+    
+    Hc = cam.Jh(fullNominalState.segment(16, 3));   // 2x3
+    for(int j =0; j < num_frame; j++)
+    {
+        Matrix3f R_gb = quaternion_to_R(pose_mtx.block<4,1>(0,j));
+        
+        ri.segment(j*2, 2) = measure.col(j) - projectPoint(feature_pose, R_gb, pose_mtx.block<3,1>(4,j), fullNominalState.segment(16, 3));
+        
+        Mij = cam.Jh(R_gb.transpose()*feature_pose)*R_cb*R_gb.transpose();
+        tmp39 = MatrixXf::Zero(3,9);
+        tmp39.block<3,3>(0,0) = skew_mtx(feature_pose-pose_mtx.block<3,1>(4,j));
+        tmp39.block<3,3>(0,3) = -Matrix3f::Identity();
+        
+        HxBj = Mij*tmp39;                           // 2x9
+        
+        Hi.block<2,9>(j*2,ERROR_STATE_SIZE+3+ERROR_POSE_STATE_SIZE*(frame_offset+j)) = HxBj;
+        Hi.block<2,3>(j*2,ERROR_STATE_SIZE) = Hc;
+        
+        Hf = cam.Jh(feature_pose)*R_cb*R_gb.transpose();
+        Hfi.block<2,3>(j*2,0) = Hf.cast<double>();
+    }
+    // now carry out feature error marginalization
+    JacobiSVD<MatrixXd> svd(Hfi.transpose(), Eigen::ComputeFullV);
+    MatrixXf left_null = svd.matrixV().cast<float>().transpose();
+    
+    ri = left_null*ri;
+    Hi = left_null*Hi;
 }
 
 

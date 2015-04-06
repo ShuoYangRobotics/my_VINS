@@ -19,8 +19,8 @@
 using namespace Eigen;
 using namespace std;
 
-#include "FeatureManager.h"
-class FeatureRecord;
+#include "FeatureRecord.h"
+#include "Camera.h"
 
 struct SlideState
 {
@@ -49,10 +49,13 @@ private:
     
     /* noise matrix */
     MatrixXf Nc;
+    float measure_noise;
     
     /* feature management */
     map<int, FeatureRecord> feature_record_dict;
-    list<pair<int, Vector3f>> triangulate_ptrs;
+    list<VectorXf>  residual_list;
+    list<MatrixXf>  H_mtx_list;
+    list<int>       H_mtx_block_size_list;
     
     
     float current_time;     // indicates the current time stamp
@@ -70,15 +73,26 @@ private:
     Vector3f gyro_bias;
     Vector3f acce_bias;
     
+    /* camera */    
+    DistortCamera cam;
     
+    /* fixed rotation between camera and the body frame */
+    Matrix3f R_cb;
     
 public:
     MSCKF();
     ~MSCKF();
     
     void resetError();
-    void setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vector3f ba, Vector3f pbc);
+    void setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vector3f ba);
+    void setCalibParam(Vector3f p_cb, float fx, float fy, float ox, float oy, float k1, float k2, float p1, float p2, float k3);
+    void setIMUCameraRotation(Matrix3f _R_cb);
+    
     void setNoiseMatrix(float dgc, float dac, float dwgc, float dwac);
+    void setMeasureNoise(float _noise);
+    
+    void correctNominalState(VectorXf delta);
+    
     void processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity);
     void processImage(const vector<pair<int, Vector3d>> &image, vector<pair<Vector3d, Vector3d>> &corres);
     
@@ -87,6 +101,9 @@ public:
     void addFeatures(const vector<pair<int, Vector3d>> &image);
     void removeFrameFeatures(int index);
     void removeUsedFeatures();
+    
+    Vector2f projectPoint(Vector3f feature_pose, Matrix3f R_bg, Vector3f p_gb, Vector3f p_cb);
+    void getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, MatrixXf measure, MatrixXf pose_mtx, int frame_offset);
     
     
     /* debug outputs */
