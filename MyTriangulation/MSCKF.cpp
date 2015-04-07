@@ -132,12 +132,12 @@ void MSCKF::correctNominalState(VectorXf delta)
         
         fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+4, 3) =
             fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+4, 3) +
-        delta.segment(ERROR_STATE_SIZE+3+i*ERROR_POSE_STATE_SIZE+3, 3);
+            delta.segment(ERROR_STATE_SIZE+3+i*ERROR_POSE_STATE_SIZE+3, 3);
         itr->p = fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+4, 3);
         
         fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+7, 3) =
             fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+7, 3) +
-            delta.segment(ERROR_STATE_SIZE+3+i*ERROR_POSE_STATE_SIZE+7, 3);
+            delta.segment(ERROR_STATE_SIZE+3+i*ERROR_POSE_STATE_SIZE+6, 3);
         itr->v = fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+7, 3);
         
         itr++;
@@ -220,6 +220,7 @@ void MSCKF::processIMU(float t, Vector3f linear_acceleration, Vector3f angular_v
     errorCovariance = phi*(errorCovariance+0.5*dt*Nc)*phi.transpose() + Nc;
     
     fullErrorCovariance.block<ERROR_STATE_SIZE, ERROR_STATE_SIZE>(0, 0) = errorCovariance;
+    fullNominalState.head(NOMINAL_STATE_SIZE) = nominalState;
     
     return;
 }
@@ -308,11 +309,11 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image, vector<pair<V
                 if (is_valid)
                 {
                     num_measure++;
-                    row_H += (2*num_frame - 3); // after feature error marginalization
                     // construct H matrix use ptr_pose, item.second.start_frame and current_frame
                     VectorXf ri;
                     MatrixXf Hi;
                     getResidualH(ri, Hi, ptr_pose, measure_mtx, pose_mtx, item.second.start_frame);
+                    row_H += (2*num_frame - 3); // after feature error marginalization
                     
                     // TODO: outlier reject: Chi-square test
                     
@@ -600,6 +601,9 @@ Vector2f MSCKF::projectPoint(Vector3f feature_pose, Matrix3f R_gb, Vector3f p_gb
     return zij;
 }
 
+/*
+ *   frame_offset: used to place HxBj in right place in H
+ */
 void MSCKF::getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, MatrixXf measure, MatrixXf pose_mtx, int frame_offset)
 {
     int num_frame = (int)pose_mtx.cols();
@@ -737,4 +741,36 @@ void MSCKF::printErrorCovariance(bool is_full)
         std::cout<<errorCovariance<<std::endl;
     }
 }
-    
+
+Vector4f MSCKF::getQuaternion()
+{
+    return fullNominalState.head(4);
+}
+
+Matrix3f MSCKF::getRotation()
+{
+    Vector4f q = fullNominalState.head(4);
+    return quaternion_to_R(q);
+}
+
+Vector3f MSCKF::getPosition()
+{
+    return fullNominalState.segment(4, 3);
+}
+
+Vector3f MSCKF::getVelocity()
+{
+    return fullNominalState.segment(7, 3);
+}
+Vector3f MSCKF::getGyroBias()
+{
+    return fullNominalState.segment(10, 3);
+}
+Vector3f MSCKF::getAcceBias()
+{
+    return fullNominalState.segment(13, 3);
+}
+Vector3f MSCKF::getVIOffset()
+{
+    return fullNominalState.segment(16, 3);
+}

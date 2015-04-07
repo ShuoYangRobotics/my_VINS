@@ -105,6 +105,15 @@ public:
     Vector2f projectPoint(Vector3f feature_pose, Matrix3f R_bg, Vector3f p_gb, Vector3f p_cb);
     void getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, MatrixXf measure, MatrixXf pose_mtx, int frame_offset);
     
+    /* outputs */
+    Vector4f getQuaternion();
+    Matrix3f getRotation();
+    Vector3f getPosition();
+    Vector3f getVelocity();
+    Vector3f getGyroBias();
+    Vector3f getAcceBias();
+    Vector3f getVIOffset();
+    
     
     /* debug outputs */
     void printNominalState(bool is_full);
