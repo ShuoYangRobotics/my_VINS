@@ -118,8 +118,30 @@ void MSCKF::correctNominalState(VectorXf delta)
     fullNominalState.segment(4, 3) = fullNominalState.segment(4, 3)+delta.segment(3, 3);
     fullNominalState.segment(7, 3) = fullNominalState.segment(7, 3)+delta.segment(6, 3);
     fullNominalState.segment(10, 3) = fullNominalState.segment(10, 3)+delta.segment(9, 3);
-    fullNominalState.segment(13, 3) = fullNominalState.segment(13, 3)+delta.segment(12, 3);;
+    fullNominalState.segment(13, 3) = fullNominalState.segment(13, 3)+delta.segment(12, 3);
+    fullNominalState.segment(16, 3) = fullNominalState.segment(16, 3)+delta.segment(15, 3);   //p_cb
     
+    // loop to correct sliding states
+    std::list<SlideState>::iterator itr = slidingWindow.begin();
+    for (int i=0; i<=current_frame;i++)
+    {
+        fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE, 4) =
+            quaternion_correct(fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE, 4),
+                               delta.segment(ERROR_STATE_SIZE+3+i*ERROR_POSE_STATE_SIZE, 3));
+        itr->q = fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE, 4);
+        
+        fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+4, 3) =
+            fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+4, 3) +
+        delta.segment(ERROR_STATE_SIZE+3+i*ERROR_POSE_STATE_SIZE+3, 3);
+        itr->p = fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+4, 3);
+        
+        fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+7, 3) =
+            fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+7, 3) +
+            delta.segment(ERROR_STATE_SIZE+3+i*ERROR_POSE_STATE_SIZE+7, 3);
+        itr->v = fullNominalState.segment(NOMINAL_STATE_SIZE+3+i*NOMINAL_POSE_STATE_SIZE+7, 3);
+        
+        itr++;
+    }
     
     nominalState = fullNominalState.head(NOMINAL_STATE_SIZE);
 }
