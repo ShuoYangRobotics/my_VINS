@@ -160,7 +160,7 @@ void MSCKF::processIMU(float t, Vector3f linear_acceleration, Vector3f angular_v
     acce_bias = nominalState.segment(13, 3);
     
     spatial_rotation = quaternion_to_R(spatial_quaternion);
-    std::cout << spatial_rotation << std::endl;
+    //std::cout << spatial_rotation << std::endl;
     if (current_time < 0.0f)
     {
         current_time = t;
@@ -214,8 +214,8 @@ void MSCKF::processIMU(float t, Vector3f linear_acceleration, Vector3f angular_v
     //8. phi_pba
     phi.block<3,3>(3,12) = -0.25f*dt*dt*average_R;
     
-    std::cout << "phi is" << std::endl;
-    std::cout << phi << std::endl;
+    //std::cout << "phi is" << std::endl;
+    //std::cout << phi << std::endl;
     
     errorCovariance = phi*(errorCovariance+0.5*dt*Nc)*phi.transpose() + Nc;
     
@@ -225,9 +225,9 @@ void MSCKF::processIMU(float t, Vector3f linear_acceleration, Vector3f angular_v
     return;
 }
 
-void MSCKF::processImage(const vector<pair<int, Vector3d>> &image, vector<pair<Vector3d, Vector3d>> &corres)
+void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
 {
-    printf("input feature: %lu", image.size());
+    ROS_DEBUG("input feature: %lu\n", image.size());
     
     // init is_lost
     for (auto & item : feature_record_dict)
@@ -237,6 +237,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image, vector<pair<V
             item.second.is_lost = true;
         }
     }
+    ROS_DEBUG("current frame is %d", current_frame);
     
     // add sliding state
     // removeSlideState if the window is full already
@@ -416,7 +417,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image, vector<pair<V
     
     
     // move to next frame by the end
-    current_frame++;
+    ++current_frame;
+    return;
 }
 
 void MSCKF::addSlideState()
@@ -456,7 +458,7 @@ void MSCKF::addSlideState()
     fullErrorCovariance = tmpCovariance;
 }
 
-void MSCKF::addFeatures(const vector<pair<int, Vector3d>> &image)
+void MSCKF::addFeatures(const vector<pair<int, Vector3f>> &image)
 {
     // add features to the feature record
     for (auto & id_pts : image)

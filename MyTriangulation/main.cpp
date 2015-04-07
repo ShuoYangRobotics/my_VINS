@@ -8,7 +8,10 @@
 
 #include <iostream>
 #include <map>
+#include <utility>
 #include <Eigen/Dense>
+#include <ros/ros.h>
+#include <ros/console.h>
 
 #include "Camera.h"
 #include "math_tool.h"
@@ -21,8 +24,92 @@ using namespace Eigen;
 MSCKF my_kf;
 void featureManagerTest();
 void KFtest();
+void test_March();
+void test_Apr();
 
-int main(int argc, const char * argv[]) {
+int main(int argc, char ** argv) {
+  //ros::init(argc, argv, "msckf_vins");
+  //ros::NodeHandle n;
+  ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
+  //test_March();
+  test_Apr();
+  return 0;
+}
+
+void test_Apr()
+{
+    Vector4f q(1.0f, 0.0f, 0.0f, 0.0f);
+    Vector3f p(3.0f, 3.0f, 4.5f);
+    Vector3f v(1.3f, 1.4f, 1.5f);
+    Vector3f bg(0.0f ,0.0f, 0.0f);
+    Vector3f ba(0.0f ,0.0f, 0.0f);
+    Vector3f pcb(10.0f ,0.0f, 0.0f);
+    my_kf.setCalibParam(pcb, 365.07984, 365.12127, 381.0196, 254.4431,
+                            -2.842958e-1, 8.7155025e-2, -1.4602925e-4, -6.149638e-4, -1.218237e-2);
+    my_kf.setNominalState(q, p, v, bg, ba);
+    my_kf.printNominalState(true);
+
+    my_kf.resetError();
+    my_kf.processIMU(1.0f, Vector3f(0.9f, 0.9f, 0.9f), Vector3f(0.5f, 0.0f, 0.0f));
+    my_kf.processIMU(1.4f, Vector3f(0.9f, 0.9f, 0.9f), Vector3f(0.5f, 0.0f, 0.0f));
+    my_kf.resetError();
+
+    // simulate a feature 
+    vector<pair<int, Vector3f>> image;
+    MatrixXf measure(2,5);
+    MatrixXf pose(7,5);
+    measure <<
+    497.6229,  493.1491,  489.0450,  478.8504,  466.8726,
+    371.0596,  366.5853,  362.4808,  352.2850,  340.3059
+    ;
+    pose<<
+    0.777986724316206,   0.838539246498940,   0.775194258937213,   0.831502026804405,   0.770011014887736,
+    0.625646233952092,   0.489266453739099,   0.435311151332881,   0.225961749519687,   0.059184118324008,
+    -0.057475618563915,  -0.239729575410618,  -0.457796966390153,  -0.507489573463504,  -0.635279684146888,
+    0,                   0,                   0,                   0,                   0,
+    1.098427340189829,   5.357568053111257,   9.092272676622571,  11.936962300957290,  13.613178885567471,
+    13.956842672263791,  12.934313455158014,  10.645683518400434,   7.314979906023285,   3.268235093982677,
+    1.414213562373095,  -1.414213562373095,   1.414213562373095,  -1.414213562373094,   1.414213562373095
+    ;
+    image.clear();
+    //1
+    image.push_back(std::make_pair(5, Vector3f(measure(0,0), measure(1,0), 1)));
+    my_kf.setNominalState(pose.block<4,1>(0,0), pose.block<3,1>(4,0), 
+      Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
+    my_kf.processImage(image);
+    image.clear();
+    //2
+    image.push_back(std::make_pair(5, Vector3f(measure(0,1), measure(1,1), 1)));
+    my_kf.setNominalState(pose.block<4,1>(0,1), pose.block<3,1>(4,1), 
+      Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
+    my_kf.processImage(image);
+    image.clear();
+    //3
+    image.push_back(std::make_pair(5, Vector3f(measure(0,2), measure(1,2), 1)));
+    my_kf.setNominalState(pose.block<4,1>(0,2), pose.block<3,1>(4,2), 
+      Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
+    my_kf.processImage(image);
+    image.clear();
+    //4
+    image.push_back(std::make_pair(5, Vector3f(measure(0,3), measure(1,3), 1)));
+    my_kf.setNominalState(pose.block<4,1>(0,3), pose.block<3,1>(4,3), 
+      Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
+    my_kf.processImage(image);
+    image.clear();
+    //5
+    image.push_back(std::make_pair(5, Vector3f(measure(0,4), measure(1,4), 1)));
+    my_kf.setNominalState(pose.block<4,1>(0,4), pose.block<3,1>(4,4), 
+      Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
+    my_kf.processImage(image);
+    image.clear();
+
+    // finally should do a triangulation
+    my_kf.processImage(image);
+
+    std::cout<< "I have done this peacefully" << std::endl;
+}
+
+void test_March() {
     DistortCamera cam;
     cam.setImageSize(480, 752);
     cam.setIntrinsicMtx(365.07984, 365.12127, 381.0196, 254.4431);
@@ -116,7 +203,7 @@ int main(int argc, const char * argv[]) {
     std::cout << "mymap[301] is " << mymap[301] << '\n';
     
     std::cout << "find 301"  << mymap.find(301)->second << '\n';
-    std::cout << "find 302"  << mymap.find(302)->second << '\n';
+    //std::cout << "find 302"  << mymap.find(302)->second << '\n';
     
     std::cout << "mymap now contains " << mymap.size() << " elements.\n";
 
@@ -143,7 +230,6 @@ int main(int argc, const char * argv[]) {
         MatrixXf D = Q*RR-A;
 
     std::cout << "\n" << (Q*RR-A).norm() << "  " << sqrt((D.adjoint()*D).trace()) << "\n";
-    return 0;
 }
 
 void KFtest()
@@ -198,10 +284,4 @@ void foo()
     state.v = v;
     
     //myManager.addSlideState(state);
-}
-void featureManagerTest()
-{
-    
-    foo();
-    //myManager.debugOut();
 }

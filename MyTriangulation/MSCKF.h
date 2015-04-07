@@ -16,6 +16,10 @@
 #include <vector>
 #include <numeric>
 #include <Eigen/Dense>
+
+#include <ros/ros.h>
+#include <ros/console.h>
+
 using namespace Eigen;
 using namespace std;
 
@@ -94,11 +98,11 @@ public:
     void correctNominalState(VectorXf delta);
     
     void processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity);
-    void processImage(const vector<pair<int, Vector3d>> &image, vector<pair<Vector3d, Vector3d>> &corres);
+    void processImage(const vector<pair<int, Vector3f>> &image);
     
     void addSlideState();
     void removeSlideState(int index, int total);
-    void addFeatures(const vector<pair<int, Vector3d>> &image);
+    void addFeatures(const vector<pair<int, Vector3f>> &image);
     void removeFrameFeatures(int index);
     void removeUsedFeatures();
     
