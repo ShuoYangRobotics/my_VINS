@@ -58,7 +58,7 @@ void test_Apr()
     Vector3f v(1.3f, 1.4f, 1.5f);
     Vector3f bg(0.0f ,0.0f, 0.0f);
     Vector3f ba(0.0f ,0.0f, 0.0f);
-    Vector3f pcb(10.0f ,0.0f, 0.0f);
+    Vector3f pcb(0.0f ,0.0f, 0.0f);
     my_kf.setCalibParam(pcb, 365.07984, 365.12127, 381.0196, 254.4431,
                             -2.842958e-1, 8.7155025e-2, -1.4602925e-4, -6.149638e-4, -1.218237e-2);
     my_kf.setNominalState(q, p, v, bg, ba);

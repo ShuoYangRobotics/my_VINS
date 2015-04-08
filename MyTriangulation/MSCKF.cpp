@@ -46,10 +46,11 @@ MSCKF::MSCKF()
     
     current_frame = -1;   // initially no frame
     
-    R_cb <<
-        0, -1, 0,
-        0,  0, 1,
-       -1,  0, 0;
+    R_cb = Matrix3f::Identity();
+//    R_cb <<
+//        0, -1, 0,
+//        0,  0, 1,
+//       -1,  0, 0;
 //    Ric <<
 //    0, 0, -1,
 //    -1, 0, 0,
@@ -114,13 +115,16 @@ void MSCKF::setIMUCameraRotation(Matrix3f _R_cb)
 
 void MSCKF::correctNominalState(VectorXf delta)
 {
+    cout << __FILE__ << ":" << __LINE__ <<endl;
+    printNominalState(true);
     fullNominalState.segment(0, 4) = quaternion_correct(fullNominalState.segment(0, 4), delta.segment(0, 3));
     fullNominalState.segment(4, 3) = fullNominalState.segment(4, 3)+delta.segment(3, 3);
     fullNominalState.segment(7, 3) = fullNominalState.segment(7, 3)+delta.segment(6, 3);
     fullNominalState.segment(10, 3) = fullNominalState.segment(10, 3)+delta.segment(9, 3);
     fullNominalState.segment(13, 3) = fullNominalState.segment(13, 3)+delta.segment(12, 3);
     fullNominalState.segment(16, 3) = fullNominalState.segment(16, 3)+delta.segment(15, 3);   //p_cb
-    
+    cout << __FILE__ << ":" << __LINE__ <<endl;
+    printNominalState(true);
     // loop to correct sliding states
     std::list<SlideState>::iterator itr = slidingWindow.begin();
     for (int i=0; i<=current_frame;i++)
@@ -290,7 +294,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
                     measure_mtx(1,i-item.second.start_frame) = itr_f->point.y();
                 
                     // construct pose
-                    pose_mtx.block<4,1>(0,i-item.second.start_frame) = itr_s->q;
+                    // TODO: should transform q_bg p_bg to q_gc and p_gc
+                    pose_mtx.block<4,1>(0,i-item.second.start_frame) = itr_s->q;  // q_bg
                     pose_mtx.block<3,1>(4,i-item.second.start_frame) = itr_s->p;
                     
                     itr_f++;
@@ -353,8 +358,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
         int row_H_count = 0;
         for (int i = 0; i < num_measure; i++)
         {
-            cout << (*itr_H).cols() << ", " << (*itr_H).rows() << endl;
-            cout << *itr_H_size << endl;
+//            cout << (*itr_H).cols() << ", " << (*itr_H).rows() << endl;
+//            cout << *itr_H_size << endl;
             
             H.block(row_H_count, 0, *itr_H_size, col_H) = (*itr_H);
             r.segment(row_H_count, *itr_H_size) = (*itr_r);
@@ -396,7 +401,11 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
             delta_x = K*r;
         }
         
+        
         correctNominalState(delta_x);
+        
+        cout << __FILE__ << ":" << __LINE__ <<endl;
+        printNominalState(true);
     }
     
     
@@ -436,8 +445,11 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
         removeSlideState( frame -offset, current_frame);
         removeFrameFeatures(frame -offset);
         current_frame--;
+        
+        //printNominalState(true);
         offset++;
     }
+
     
     return;
 }
@@ -642,11 +654,22 @@ void MSCKF::getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, Matr
     MatrixXf Hf; // use double precision to increase numerial result
     Hfi = MatrixXd::Zero(2*num_frame, 3);
     
-    Hc = cam.Jh(fullNominalState.segment(16, 3));   // 2x3
+    if (fullNominalState(18) == 0)
+    {
+        Hc = MatrixXf::Zero(2,3);
+    }
+    else
+    {
+        Hc = cam.Jh(fullNominalState.segment(16, 3));   // 2x3
+    }
+    printNominalState(true);
     for(int j =0; j < num_frame; j++)
     {
+        cout << "frame is " << frame_offset+j << endl;
         Matrix3f R_gb = quaternion_to_R(pose_mtx.block<4,1>(0,j));
         
+        cout << "measure is " << measure.col(j).transpose() << endl;
+        cout << "estimat is " << projectPoint(feature_pose, R_gb, pose_mtx.block<3,1>(4,j), fullNominalState.segment(16, 3)) << endl;
         ri.segment(j*2, 2) = measure.col(j) - projectPoint(feature_pose, R_gb, pose_mtx.block<3,1>(4,j), fullNominalState.segment(16, 3));
         
         Mij = cam.Jh(R_gb.transpose()*feature_pose)*R_cb*R_gb.transpose();
@@ -655,6 +678,8 @@ void MSCKF::getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, Matr
         tmp39.block<3,3>(0,3) = -Matrix3f::Identity();
         
         HxBj = Mij*tmp39;                           // 2x9
+        cout << "HxBj is " << HxBj;
+        cout << "Hc is " << Hc;
         
         Hi.block<2,9>(j*2,ERROR_STATE_SIZE+3+ERROR_POSE_STATE_SIZE*(frame_offset+j)) = HxBj;
         Hi.block<2,3>(j*2,ERROR_STATE_SIZE) = Hc;
@@ -679,6 +704,10 @@ void MSCKF::getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, Matr
     ri = left_null*ri;
     Hi = left_null*Hi;
     
+    cout << "one measure, one H" << endl;
+    cout << "------------------" << endl;
+    cout << ri << endl;
+    cout << Hi << endl;
 //    printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
 //    printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
 }
