@@ -44,7 +44,7 @@ MSCKF::MSCKF()
                            -6.149638e-4,
                            -1.218237e-2);
     
-    current_frame = 0;
+    current_frame = -1;   // initially no frame
     
     R_cb <<
         0, -1, 0,
@@ -227,7 +227,7 @@ void MSCKF::processIMU(float t, Vector3f linear_acceleration, Vector3f angular_v
 
 void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
 {
-    ROS_DEBUG("input feature: %lu\n", image.size());
+    printf("input feature: %lu\n", image.size());
     
     // init is_lost
     for (auto & item : feature_record_dict)
@@ -237,11 +237,10 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
             item.second.is_lost = true;
         }
     }
-    ROS_DEBUG("current frame is %d", current_frame);
     
     // add sliding state
     // removeSlideState if the window is full already
-    if (current_frame == SLIDING_WINDOW_SIZE)
+    if (current_frame == SLIDING_WINDOW_SIZE-1)
     {
         removeSlideState(1, SLIDING_WINDOW_SIZE);
         removeFrameFeatures(1);
@@ -249,6 +248,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
     }
     
     addSlideState();
+    ++current_frame;
+    printf("current frame is %d\n", current_frame);
     addFeatures(image);     // is_lost modified here
 
     //check is_lost to get measurement
@@ -306,6 +307,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
                         is_valid = false;
                 }
                 
+                //cout << "I triangulate: " << ptr_pose << endl;
+                
                 /* 2. calculate r and H */
                 if (is_valid)
                 {
@@ -342,7 +345,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
         int col_H = (int)fullErrorState.size();
         // use ri and Hi to do KF update
         /* 1. construct H matrix */
-        MatrixXd H = MatrixXd::Zero(row_H, col_H);
+        MatrixXf H = MatrixXf::Zero(row_H, col_H);
         VectorXf r = VectorXf::Zero(row_H);
         std::list<MatrixXf>::iterator itr_H = H_mtx_list.begin();
         std::list<VectorXf>::iterator itr_r = residual_list.begin();
@@ -350,7 +353,10 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
         int row_H_count = 0;
         for (int i = 0; i < num_measure; i++)
         {
-            H.block(row_H_count, 0, *itr_H_size, col_H) = (*itr_H).cast<double>();
+            cout << (*itr_H).cols() << ", " << (*itr_H).rows() << endl;
+            cout << *itr_H_size << endl;
+            
+            H.block(row_H_count, 0, *itr_H_size, col_H) = (*itr_H);
             r.segment(row_H_count, *itr_H_size) = (*itr_r);
             row_H_count += *itr_H_size;
             
@@ -358,24 +364,38 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
             itr_r++;
             itr_H_size++;
         }
+
+        VectorXf delta_x;
+        // when there are a lot of features, use QR of H to speed up computation
+        if (H.rows()>H.cols())
+        {
+            HouseholderQR<MatrixXd> qr(H.cast<double>());
+            MatrixXd R = qr.matrixQR().triangularView<Upper>();
+            MatrixXd Q = qr.householderQ();
+            MatrixXf Th = R.topRows(col_H).cast<float>();
+            MatrixXf Q1 = Q.leftCols(col_H).cast<float>();
+            
+            /* 3. calculate Kalman gain */
+            MatrixXf Rq = MatrixXf::Identity(row_H, row_H) * measure_noise*measure_noise;
+            MatrixXf tmpK = (Th*fullErrorCovariance*Th.transpose() + Rq).inverse();
+            MatrixXf K = fullErrorCovariance*Th.transpose()*tmpK;
         
-        /* 2. decompose H */
-        HouseholderQR<MatrixXd> qr(H);
-        MatrixXd R = qr.matrixQR().triangularView<Upper>();
-        MatrixXd Q = qr.householderQ();
+            /* 4. update error covariance */
+            MatrixXf ImKH = MatrixXf::Identity(col_H, col_H) - K*Th;
+            fullErrorCovariance = ImKH*fullErrorCovariance*ImKH.transpose() + K*Rq*K.transpose();
         
-        MatrixXf Th = R.topRows(col_H).cast<float>();
-        MatrixXf Q1 = Q.leftCols(col_H).cast<float>();
+            delta_x = K*Q1.transpose()*r;
+        }
+        else
+        {
+            MatrixXf Rq = MatrixXf::Identity(row_H, row_H) * measure_noise*measure_noise;
+            MatrixXf tmpK = (H*fullErrorCovariance*H.transpose() + Rq).inverse();
+            MatrixXf K = fullErrorCovariance*H.transpose()*tmpK;
+            MatrixXf ImKH = MatrixXf::Identity(col_H, col_H) - K*H;
+            fullErrorCovariance = ImKH*fullErrorCovariance*ImKH.transpose() + K*Rq*K.transpose();
+            delta_x = K*r;
+        }
         
-        /* 3. calculate Kalman gain */
-        MatrixXf Rq = MatrixXf::Identity(col_H, col_H) * measure_noise*measure_noise;
-        MatrixXf tmpK = (Th*fullErrorCovariance*Th.transpose() + Rq).inverse();
-        MatrixXf K = fullErrorCovariance*Th.transpose()*tmpK;
-        
-        /* 4. update error covariance */
-        fullErrorCovariance = (MatrixXf::Identity(col_H, col_H) - K*Th)*fullErrorCovariance;
-        
-        VectorXf delta_x = K*Q1.transpose()*r;
         correctNominalState(delta_x);
     }
     
@@ -385,13 +405,13 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
     int used_count;
     list<int> frame_to_remove;
     frame_to_remove.clear();
-    for (int i=0; i<=current_frame;i++)
+    for (int i=0; i<current_frame;i++)
     {
         feature_count = 0;
         used_count = 0;
         for (auto & item : feature_record_dict)
         {
-            if (item.second.start_frame < i)
+            if (item.second.start_frame <= i)
             {
                 feature_count++;
             }
@@ -402,22 +422,23 @@ void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
         }
         if (feature_count == used_count) // all features under this state are used
         {
-            frame_to_remove.push_back(i);
+            if (feature_count>0)
+            {
+                frame_to_remove.push_back(i);
+            }
         }
         
     }
     int offset = 0;
     for (auto &frame:frame_to_remove)  // frame is ordered
     {
-        removeSlideState(frame-offset, current_frame+1);
-        removeFrameFeatures(frame-offset);
+        cout << frame << endl;
+        removeSlideState( frame -offset, current_frame);
+        removeFrameFeatures(frame -offset);
         current_frame--;
         offset++;
     }
     
-    
-    // move to next frame by the end
-    ++current_frame;
     return;
 }
 
@@ -642,11 +663,24 @@ void MSCKF::getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, Matr
         Hfi.block<2,3>(j*2,0) = Hf.cast<double>();
     }
     // now carry out feature error marginalization
-    JacobiSVD<MatrixXd> svd(Hfi.transpose(), Eigen::ComputeFullV);
-    MatrixXf left_null = svd.matrixV().cast<float>().transpose();
+    JacobiSVD<MatrixXd> svd(Hfi.transpose(), ComputeFullV);
+    MatrixXf left_null = svd.matrixV().cast<float>().rightCols(2*num_frame-3).transpose();
+    
+//    MatrixXd S = svd.singularValues().asDiagonal();
+//    MatrixXd U = svd.matrixU();
+//    MatrixXd V = svd.matrixV();
+//    MatrixXd D = Hfi.transpose()-U*S*V.transpose();
+//    std::cout << "\n" << D.norm() << "  " << sqrt((D.adjoint()*D).trace()) << "\n";
+    
+//    printf("left null size (%d, %d)\n", left_null.rows(), left_null.cols());
+//    printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
+//    printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
     
     ri = left_null*ri;
     Hi = left_null*Hi;
+    
+//    printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
+//    printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
 }
 
 

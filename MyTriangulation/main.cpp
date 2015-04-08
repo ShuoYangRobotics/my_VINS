@@ -10,8 +10,8 @@
 #include <map>
 #include <utility>
 #include <Eigen/Dense>
-#include <ros/ros.h>
-#include <ros/console.h>
+//#include <ros/ros.h>
+//#include <ros/console.h>
 
 #include "Camera.h"
 #include "math_tool.h"
@@ -30,7 +30,7 @@ void test_Apr();
 int main(int argc, char ** argv) {
   //ros::init(argc, argv, "msckf_vins");
   //ros::NodeHandle n;
-  ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
+  //ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
   //test_March();
   test_Apr();
   return 0;
@@ -38,6 +38,21 @@ int main(int argc, char ** argv) {
 
 void test_Apr()
 {
+    // do test here
+    MatrixXf U(3,2);
+    U << 0.388,   0.866,
+    0.712, -0.0634,
+    -0.586,   0.496;
+    Matrix2f S(2,2);
+    S << 1.19, 0,
+    0, 0.899;
+    Matrix2f V(2,2);
+    V<< -0.183,  0.983,
+    0.983 , 0.183;
+    cout << U*S*V.transpose()<<endl;
+    
+    
+    
     Vector4f q(1.0f, 0.0f, 0.0f, 0.0f);
     Vector3f p(3.0f, 3.0f, 4.5f);
     Vector3f v(1.3f, 1.4f, 1.5f);
@@ -72,31 +87,31 @@ void test_Apr()
     1.414213562373095,  -1.414213562373095,   1.414213562373095,  -1.414213562373094,   1.414213562373095
     ;
     image.clear();
-    //1
+    //0
     image.push_back(std::make_pair(5, Vector3f(measure(0,0), measure(1,0), 1)));
     my_kf.setNominalState(pose.block<4,1>(0,0), pose.block<3,1>(4,0), 
       Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
     my_kf.processImage(image);
     image.clear();
-    //2
+    //1
     image.push_back(std::make_pair(5, Vector3f(measure(0,1), measure(1,1), 1)));
     my_kf.setNominalState(pose.block<4,1>(0,1), pose.block<3,1>(4,1), 
       Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
     my_kf.processImage(image);
     image.clear();
-    //3
+    //2
     image.push_back(std::make_pair(5, Vector3f(measure(0,2), measure(1,2), 1)));
     my_kf.setNominalState(pose.block<4,1>(0,2), pose.block<3,1>(4,2), 
       Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
     my_kf.processImage(image);
     image.clear();
-    //4
+    //3
     image.push_back(std::make_pair(5, Vector3f(measure(0,3), measure(1,3), 1)));
     my_kf.setNominalState(pose.block<4,1>(0,3), pose.block<3,1>(4,3), 
       Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
     my_kf.processImage(image);
     image.clear();
-    //5
+    //4
     image.push_back(std::make_pair(5, Vector3f(measure(0,4), measure(1,4), 1)));
     my_kf.setNominalState(pose.block<4,1>(0,4), pose.block<3,1>(4,4), 
       Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));

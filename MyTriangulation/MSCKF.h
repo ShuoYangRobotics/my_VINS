@@ -17,8 +17,8 @@
 #include <numeric>
 #include <Eigen/Dense>
 
-#include <ros/ros.h>
-#include <ros/console.h>
+//#include <ros/ros.h>
+//#include <ros/console.h>
 
 using namespace Eigen;
 using namespace std;
