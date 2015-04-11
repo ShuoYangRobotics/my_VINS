@@ -37,12 +37,12 @@ class MSCKF
 {
 private:
     /* states */
-    VectorXf nominalState;  // dimension 4 + 3 + 3 + 3 + 3 = 16
-    VectorXf errorState;    // dimension 3 + 3 + 3 + 3 + 3 = 15
-    VectorXf extrinsicP;    // p_bc, dimension 3
+//    VectorXf nominalState;  // dimension 4 + 3 + 3 + 3 + 3 = 16
+//    VectorXf errorState;    // dimension 3 + 3 + 3 + 3 + 3 = 15
+//    VectorXf extrinsicP;    // p_bc, dimension 3
     
     VectorXf fullNominalState;
-    VectorXf fullErrorState;
+//    VectorXf fullErrorState;
     
     list<SlideState> slidingWindow;
 
@@ -70,8 +70,8 @@ private:
     Vector3f prev_a, curr_a;
     
     /* nominal state variables used only for calculation */
-    Vector4f spatial_quaternion; // q_BG
-    Matrix3f spatial_rotation; // R_BG
+    Vector4f spatial_quaternion; // q_gb
+    Matrix3f spatial_rotation; // R_gb
     Vector3f spatial_position;
     Vector3f spatial_velocity;
     Vector3f gyro_bias;
@@ -83,23 +83,9 @@ private:
     /* fixed rotation between camera and the body frame */
     Matrix3f R_cb;
     
-public:
-    MSCKF();
-    ~MSCKF();
-    
-    void resetError();
-    void setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vector3f ba);
-    void setCalibParam(Vector3f p_cb, float fx, float fy, float ox, float oy, float k1, float k2, float p1, float p2, float k3);
-    void setIMUCameraRotation(Matrix3f _R_cb);
-    
-    void setNoiseMatrix(float dgc, float dac, float dwgc, float dwac);
-    void setMeasureNoise(float _noise);
+
     
     void correctNominalState(VectorXf delta);
-    
-    void processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity);
-    void processImage(const vector<pair<int, Vector3f>> &image);
-    
     void addSlideState();
     void removeSlideState(int index, int total);
     void addFeatures(const vector<pair<int, Vector3f>> &image);
@@ -109,6 +95,23 @@ public:
     Vector2f projectPoint(Vector3f feature_pose, Matrix3f R_bg, Vector3f p_gb, Vector3f p_cb);
     void getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, MatrixXf measure, MatrixXf pose_mtx, int frame_offset);
     
+public:
+    MSCKF();
+    ~MSCKF();
+    
+    void resetError();
+    
+    void processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity);
+    void processImage(const vector<pair<int, Vector3f>> &image);
+    
+    void setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vector3f ba);
+    void setCalibParam(Vector3f p_cb, float fx, float fy, float ox, float oy, float k1, float k2, float p1, float p2, float k3);
+    void setIMUCameraRotation(Matrix3f _R_cb);
+    
+    void setNoiseMatrix(float dgc, float dac, float dwgc, float dwac);
+    void setMeasureNoise(float _noise);
+    
+
     /* outputs */
     Vector4f getQuaternion();
     Matrix3f getRotation();

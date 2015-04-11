@@ -120,6 +120,11 @@ void test_Apr()
 
     // finally should do a triangulation
     my_kf.processImage(image);
+    
+    
+//    
+//    my_kf.processImage(image);
+//    my_kf.processImage(image);
 
     std::cout<< "I have done this peacefully" << std::endl;
 }
@@ -260,7 +265,7 @@ void KFtest()
     my_kf.setNominalState(q, p, v, bg, ba);
     my_kf.printNominalState(true);
     my_kf.printErrorCovariance(true);
-    my_kf.addSlideState();
+//    my_kf.addSlideState();
     my_kf.printNominalState(true);
     my_kf.printErrorCovariance(true);
     my_kf.printSlidingWindow();
@@ -270,17 +275,17 @@ void KFtest()
     
     my_kf.printNominalState(true);
     my_kf.printErrorCovariance(true);
-    my_kf.addSlideState();
+//    my_kf.addSlideState();
     my_kf.printSlidingWindow();
     
     my_kf.printNominalState(true);
     my_kf.printErrorCovariance(true);
-    my_kf.removeSlideState(0, 2);
+//    my_kf.removeSlideState(0, 2);
     
     my_kf.printNominalState(true);
     my_kf.printErrorCovariance(true);
     my_kf.printSlidingWindow();
-    my_kf.removeSlideState(0, 1);
+//    my_kf.removeSlideState(0, 1);
     
     my_kf.printErrorCovariance(true);
     my_kf.processIMU(1.0f, Vector3f(0.9f, 0.9f, 0.9f), Vector3f(0.5f, 0.0f, 0.0f));
