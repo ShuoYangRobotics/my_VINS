@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="sensor_processor" name="sensor_processor" type="sensor_processor" output="screen">
+        <rosparam file="$(find sensor_processor)/config/right_25000709.yml"/>
+        <remap from="~input_image" to="/camera/image"/>
+        <remap from="~output_image" to="/sensors/image"/>
+    </node>
+</launch>
