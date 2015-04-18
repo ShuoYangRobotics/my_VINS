@@ -37,8 +37,8 @@ int main(int argc, char** argv)
     DataGenerator generator;
     ros::Rate loop_rate(generator.FREQ);
 
-    while (pub_imu.getNumSubscribers() == 0 || pub_image.getNumSubscribers() == 0)
-        loop_rate.sleep();
+    //while (pub_imu.getNumSubscribers() == 0 || pub_image.getNumSubscribers() == 0)
+    //    loop_rate.sleep();
 
     sensor_msgs::PointCloud point_cloud;
     point_cloud.header.frame_id = "my_frame";
@@ -117,6 +117,7 @@ int main(int argc, char** argv)
         pub_imu.publish(imu);
         ROS_INFO("publish imu data with stamp %lf", imu.header.stamp.toSec());
 
+        pub_cloud.publish(point_cloud);
         //publish image data
         if (publish_count % generator.IMU_PER_IMG == 0)
         {
@@ -159,9 +160,9 @@ int main(int argc, char** argv)
             pub_image.publish(feature);
             ROS_INFO("publish image data with stamp %lf", feature.header.stamp.toSec());
             cv::imshow("camera image", simu_img);
-            cv::waitKey(1);
-            if (generator.getTime() > DataGenerator::MAX_TIME)
-                break;
+            cv::waitKey(100);
+            //if (generator.getTime() > DataGenerator::MAX_TIME)
+            //    break;
         }
 
         //update work

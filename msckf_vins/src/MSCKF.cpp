@@ -204,7 +204,7 @@ void MSCKF::processIMU(float t, Vector3f linear_acceleration, Vector3f angular_v
     return;
 }
 
-void MSCKF::processImage(const vector<pair<int, Vector3f>> &image)
+void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
 {
     printf("input feature: %lu\n", image.size());
     
@@ -484,7 +484,7 @@ void MSCKF::addSlideState()
     fullErrorCovariance = tmpCovariance;
 }
 
-void MSCKF::addFeatures(const vector<pair<int, Vector3f>> &image)
+void MSCKF::addFeatures(const vector<pair<int, Vector3d>> &image)
 {
     // add features to the feature record
     for (auto & id_pts : image)

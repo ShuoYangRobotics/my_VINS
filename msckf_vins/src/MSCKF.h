@@ -88,7 +88,7 @@ private:
     void correctNominalState(VectorXf delta);
     void addSlideState();
     void removeSlideState(int index, int total);
-    void addFeatures(const vector<pair<int, Vector3f>> &image);
+    void addFeatures(const vector<pair<int, Vector3d>> &image);
     void removeFrameFeatures(int index);
     void removeUsedFeatures();
     
@@ -102,7 +102,7 @@ public:
     void resetError();
     
     void processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity);
-    void processImage(const vector<pair<int, Vector3f>> &image);
+    void processImage(const vector<pair<int, Vector3d>> &image);
     
     void setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vector3f ba);
     void setCalibParam(Vector3f p_cb, float fx, float fy, float ox, float oy, float k1, float k2, float p1, float p2, float k3);

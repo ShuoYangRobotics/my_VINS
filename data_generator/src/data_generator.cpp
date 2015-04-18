@@ -61,9 +61,12 @@ Vector3d DataGenerator::getPosition()
     //else if (t > 2 * MAX_TIME)
     //    t = 2 * MAX_TIME;
 
-    double x = pow(t, 3) / pow(MAX_TIME, 3) * MAX_BOX;
-    double y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * PI * 2 * 2);
-    double z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * PI * 2);
+    //double x = pow(t, 3) / pow(MAX_TIME, 3) * MAX_BOX;
+    //double y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * PI * 2 * 2);
+    //double z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * PI * 2);
+    double x = 10*cos(t/10);
+    double y = 10*sin(t/10);
+    double z = 3;
 
     //t = backup;
     return Vector3d(x, y, z);
