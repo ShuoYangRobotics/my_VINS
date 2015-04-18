@@ -12,3 +12,11 @@ This project tries to implement paper:
 I finished whole framework, which is a simplified version of *shelley14msc*. Now I am going to write several ROS package to process image and do simulation.
 
 Gonna folk dvorak0's sensor_processor and data_generator
+
+**-2015-4-15-**
+
+add ROS packages
+
+   1.  msckf_vins. core package, move all MyTriangulation code here, and wrap ROS interface to receive sensor data
+   2.  sensor_processor. Read IMU and process image 
+   3.  data_generator. a simulated environment that can generate IMU and image 
