@@ -153,7 +153,7 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
     }
     
     double dt = t - current_time;
-    cout << "dt: " << dt << endl;
+    //cout << "dt: " << dt << endl;
     
     current_time = t;
     curr_w = angular_velocity - gyro_bias;
@@ -172,24 +172,31 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
     prev_R = spatial_rotation;
 
     Quaterniond dq(1,
-                       curr_w(0) * dt / 2,
-                       curr_w(1) * dt / 2,
-                       curr_w(2) * dt / 2);
-        dq.w() = 1 - dq.vec().transpose() * dq.vec();
+                   curr_w(0) * dt / 2,
+                   curr_w(1) * dt / 2,
+                   curr_w(2) * dt / 2);
+    dq.w() = 1 - dq.vec().transpose() * dq.vec();
     Quaterniond q(spatial_rotation);
-        spatial_rotation = (q * dq).normalized();
+    spatial_rotation = (q * dq).normalized();
+
+    //spatial_position += spatial_velocity * dt + spatial_rotation * curr_a * dt * dt / 2;
+    //spatial_velocity += spatial_rotation * curr_a * dt + g * dt;
 
     tmp_pos = spatial_position + spatial_velocity * dt
-                               + spatial_rotation * y_hat;
+                               + spatial_rotation * y_hat + 0.5 * g * dt * dt;
     tmp_vel = spatial_velocity + spatial_rotation * s_hat + g * dt;
     spatial_velocity = tmp_vel;
     spatial_position = tmp_pos;
 
-    //cout << "curr_w" << endl << curr_w << endl;
-    //cout << "curr_a" << endl << curr_a << endl;
-    //cout << "spatal acc" << endl << spatial_rotation * s_hat / dt + g  << endl;
-    //cout << "dR"  << endl<< d_R << endl;
-    //cout << "tmp_pos" << endl << tmp_pos << endl;
+   // cout << "spatial rotaiton: "<< endl << spatial_rotation << endl;
+   // cout << "curr_w" << endl << curr_w << endl;
+   // cout << "curr_a" << endl << curr_a << endl;
+   // cout << "spatal acc" << endl << spatial_rotation * s_hat / dt + g  << endl;
+   // cout << "spatal vel" << endl << spatial_velocity  << endl;
+   // cout << "dR"  << endl<< d_R << endl;
+   // cout << "tmp_pos" << endl << tmp_pos << endl;
+   // cout << "tmp_pos increament1" << endl << spatial_velocity * dt << endl;
+   // cout << "tmp_pos increament2" << endl << y_hat << endl;
     
     //spatial_rotation = spatial_rotation*d_R.transpose(); //R_gb{l+1} = R_gb{l}*q_B{l}B{l+1}
     
@@ -209,7 +216,7 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
     prev_a = curr_a;
     
     /* propogate error covariance */
-    average_R = prev_R.transpose()+spatial_rotation.transpose();
+    average_R = prev_R+spatial_rotation;
     phi = MatrixXd::Identity(ERROR_STATE_SIZE,ERROR_STATE_SIZE);
     //1. phi_pq
     phi.block<3,3>(3,0) = -skew_mtx(prev_R * y_hat);
@@ -220,7 +227,7 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
     //4. phi_qbg
     phi.block<3,3>(0,9) = -0.5f * dt * average_R;
     //5. phi_vbg
-    phi_vbg = 0.25f * dt * dt * (skew_mtx(spatial_rotation.transpose() * curr_a) * average_R);
+    phi_vbg = 0.25f * dt * dt * (skew_mtx(spatial_rotation * curr_a) * average_R);
     phi.block<3,3>(6,9) = phi_vbg;
     //6. phi_pbg
     phi.block<3,3>(3,9) = 0.5f * dt * phi_vbg;
@@ -652,6 +659,11 @@ void MSCKF::removeFrameFeatures(int index)
     {
         feature_record_dict.erase(id);
     }
+}
+
+Vector2d MSCKF::projectWorldPoint(Vector3d ptr)
+{
+    return cam.h(ptr);
 }
 
 Vector2d MSCKF::projectPoint(Vector3d feature_pose, Matrix3d R_gb, Vector3d p_gb, Vector3d p_cb)

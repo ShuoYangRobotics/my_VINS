@@ -110,7 +110,9 @@ public:
     
     void setNoiseMatrix(double dgc, double dac, double dwgc, double dwac);
     void setMeasureNoise(double _noise);
-    
+
+    // test function...
+    Vector2d projectWorldPoint(Vector3d ptr);    
 
     /* outputs */
     Vector4d getQuaternion();

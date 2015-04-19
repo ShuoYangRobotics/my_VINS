@@ -159,8 +159,8 @@ int main(int argc, char** argv)
             feature.channels.push_back(pixel);
             pub_image.publish(feature);
             ROS_INFO("publish image data with stamp %lf", feature.header.stamp.toSec());
-            //cv::imshow("camera image", simu_img);
-            //cv::waitKey(100);
+            cv::imshow("camera image", simu_img);
+            cv::waitKey(100);
             //if (generator.getTime() > DataGenerator::MAX_TIME)
             //    break;
         }

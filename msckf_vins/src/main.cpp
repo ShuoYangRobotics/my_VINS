@@ -43,6 +43,16 @@ ros::Publisher pub_pose, pub_pose2;
 void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 {
     imu_buf.push(*imu_msg);
+
+//    double dx = imu_msg->linear_acceleration.x;
+//    double dy = imu_msg->linear_acceleration.y;
+//    double dz = imu_msg->linear_acceleration.z;
+//
+//    double rx = imu_msg->angular_velocity.x;
+//    double ry = imu_msg->angular_velocity.y;
+//    double rz = imu_msg->angular_velocity.z;
+//
+//    my_kf.processIMU(t, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz));
 }
 
 
@@ -71,6 +81,7 @@ void image_callback(const sensor_msgs::PointCloudConstPtr &image_msg)
         ROS_ERROR("wait for imu data");
         return;
     }
+    TicToc t_s;
     while (!imu_buf.empty() && t >= imu_buf.front().header.stamp.toSec())
     {
         send_imu(imu_buf.front());
@@ -84,11 +95,12 @@ void image_callback(const sensor_msgs::PointCloudConstPtr &image_msg)
         double x = image_msg->points[i].x;
         double y = image_msg->points[i].y;
         double z = image_msg->points[i].z;
-        image.push_back(make_pair(/*gr_id * 10000 + */id, Vector3d(x, y, z)));
+        Vector3d world_ptr(x, y, z);
+        Vector2d cam_ptr = my_kf.projectWorldPoint(world_ptr);
+        image.push_back(make_pair(/*gr_id * 10000 + */id, Vector3d(cam_ptr(0), cam_ptr(1), 1)));
     }
 
-    TicToc t_s;
-    //my_kf.processImage(image);
+    my_kf.processImage(image);
 
     sum_of_path += (my_kf.getPosition() - last_path).norm();
     last_path = my_kf.getPosition();
@@ -204,12 +216,12 @@ int main(int argc, char **argv)
     path.header.frame_id = "world";
 
     // init MSCKF
-    Vector4d init_q(1.0f, 0.0f, 0.0f, 0.0f);  // w x y z
-    Vector3d init_p(0.0f, 0.0f, 0.0f);
-    Vector3d init_v(0.0f, 0.0f, 0.0f);
-    Vector3d init_bg(0.0f ,0.0f, 0.0f);
-    Vector3d init_ba(0.0f ,0.0f, 0.0f);
-    Vector3d init_pcb(-0.14f, -0.02f, 0.0f);
+    Vector4d init_q(1.0, 0.0, 0.0, 0.0);  // w x y z
+    Vector3d init_p(0.0, 0.0, 0.0);
+    Vector3d init_v(0.0, 1.0, 0.0);
+    Vector3d init_bg(0.0 ,0.0, 0.0);
+    Vector3d init_ba(0.0 ,0.0, 0.0);
+    Vector3d init_pcb(-0.14, -0.02, 0.0);
     my_kf.setCalibParam(init_pcb, 365.07984, 365.12127, 381.0196, 254.4431,
                             -2.842958e-1, 8.7155025e-2, -1.4602925e-4, -6.149638e-4, -1.218237e-2);
     my_kf.setNominalState(init_q, init_p, init_v, init_bg, init_ba);
