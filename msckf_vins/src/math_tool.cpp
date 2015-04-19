@@ -9,34 +9,34 @@
 #include "math_tool.h"
 
 /* my quaternion convention
-    x = q(0);
-    y = q(1);
-    z = q(2);
-    w = q(3);
+    double w = nq(0);
+    double x = nq(1);
+    double y = nq(2);
+    double z = nq(3);
  */
 
 
-Matrix3f quaternion_to_R(const Vector4f& q)
+Matrix3d quaternion_to_R(const Vector4d& q)
 {
-    float n = q.norm();
-    Vector4f nq = q / n;
+    double n = q.norm();
+    Vector4d nq = q / n;
     
-    float w = nq(0);
-    float x = nq(1);
-    float y = nq(2);
-    float z = nq(3);
-    float w2 = w*w;
-    float x2 = x*x;
-    float y2 = y*y;
-    float z2 = z*z;
-    float xy = x*y;
-    float xz = x*z;
-    float yz = y*z;
-    float wx = w*x;
-    float wy = w*y;
-    float wz = w*z;
+    double w = nq(0);
+    double x = nq(1);
+    double y = nq(2);
+    double z = nq(3);
+    double w2 = w*w;
+    double x2 = x*x;
+    double y2 = y*y;
+    double z2 = z*z;
+    double xy = x*y;
+    double xz = x*z;
+    double yz = y*z;
+    double wx = w*x;
+    double wy = w*y;
+    double wz = w*z;
     
-    Matrix3f R(3,3);
+    Matrix3d R(3,3);
     R(0,0) = w2+x2-y2-z2;
     R(1,0) = 2*(wz + xy);
     R(2,0) = 2*(xz - wy);
@@ -49,11 +49,11 @@ Matrix3f quaternion_to_R(const Vector4f& q)
     return R;
 }
 
-Vector4f R_to_quaternion(const Matrix3f& R)
+Vector4d R_to_quaternion(const Matrix3d& R)
 {
-    Vector4f q(4);
-    float S;
-    float  tr = R(0,0) + R(1,1) + R(2,2);
+    Vector4d q(4);
+    double S;
+    double  tr = R(0,0) + R(1,1) + R(2,2);
     if (tr > 0)
     {
         S = sqrtf(tr + 1.0) * 2;
@@ -90,18 +90,18 @@ Vector4f R_to_quaternion(const Matrix3f& R)
 }
 
 
-Matrix3f skew_mtx(const Vector3f& w)
+Matrix3d skew_mtx(const Vector3d& w)
 {
-    Matrix3f W;
+    Matrix3d W;
     W <<     0, -w(2),  w(1),
     w(2),     0, -w(0),
     -w(1),  w(0),     0;
     return W;
 }
 
-Matrix4f omega_mtx(const Vector3f& w)
+Matrix4d omega_mtx(const Vector3d& w)
 {
-    Matrix4f omega;
+    Matrix4d omega;
     
     omega.block<3,3>(0,0) = - skew_mtx(w);
     omega.block<3,1>(0,3) = w;
@@ -112,10 +112,10 @@ Matrix4f omega_mtx(const Vector3f& w)
 
 // shelley thesis
 // calculate small rotation using the fourth order Runge-Kutta method
-Vector4f delta_quaternion(const Vector3f& w_prev, const Vector3f& w_curr, const float dt)
+Vector4d delta_quaternion(const Vector3d& w_prev, const Vector3d& w_curr, const double dt)
 {
-    Vector4f q, q0, k1, k2, k3, k4;
-    q0 << 0.0f, 0.0f, 0.0f, 1.0f;
+    Vector4d q, q0, k1, k2, k3, k4;
+    q0 << 1.0f, 0.0f, 0.0f, 0.0f;
     
     k1 = 0.5f * omega_mtx(w_prev) * q0;
     k2 = 0.5f * omega_mtx(0.5*(w_prev+w_curr)) * (q0 + 0.5*dt*k1);
@@ -129,21 +129,22 @@ Vector4f delta_quaternion(const Vector3f& w_prev, const Vector3f& w_curr, const 
     return q;
 }
 
-Vector4f quaternion_correct(Vector4f q, Vector3f d_theta)
+Vector4d quaternion_correct(Vector4d q, Vector3d d_theta)
 {
-    Vector4f corrected_q;
-    Quaternionf qf(
-                   q(3),
+    Vector4d corrected_q;
+    Quaterniond qf(
                    q(0),
                    q(1),
-                   q(2)
+                   q(2),
+                   q(3)
                    );
-    Quaternionf dq(
+    Quaterniond dq(
                    1,
                    0.5*d_theta(0),
                    0.5*d_theta(1),
                    0.5*d_theta(2)
                    );
+    dq.w() = 1 - dq.vec().transpose() * dq.vec();
     
     qf = (qf * dq).normalized();
     corrected_q <<

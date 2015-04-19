@@ -14,12 +14,12 @@ using namespace std;
 using namespace Eigen;
 DistortCamera::DistortCamera()
 {
-    K = Matrix3f::Identity(3,3);
-    optical = Vector2f::Zero(2,1);
-    focusMtx = Matrix2f::Zero(2,2);
+    K = Matrix3d::Identity(3,3);
+    optical = Vector2d::Zero(2,1);
+    focusMtx = Matrix2d::Zero(2,2);
 }
 
-void DistortCamera::setImageSize(float _height, float _width)
+void DistortCamera::setImageSize(double _height, double _width)
 {
     width = _width;
     nCols = _width;
@@ -27,7 +27,7 @@ void DistortCamera::setImageSize(float _height, float _width)
     height = _height;
     nRows = _height;
 }
-void DistortCamera::setIntrinsicMtx(float _fx, float _fy, float _ox, float _oy)
+void DistortCamera::setIntrinsicMtx(double _fx, double _fy, double _ox, double _oy)
 {
     fx = _fx;
     fy = _fy;
@@ -44,7 +44,7 @@ void DistortCamera::setIntrinsicMtx(float _fx, float _fy, float _ox, float _oy)
     focusMtx(0,0) = fx;
     focusMtx(1,0) = fy;
 }
-void DistortCamera::setDistortionParam(float _k1, float _k2, float _p1, float _p2, float _k3)
+void DistortCamera::setDistortionParam(double _k1, double _k2, double _p1, double _p2, double _k3)
 {
     k1 = _k1;
     k2 = _k2;
@@ -53,10 +53,10 @@ void DistortCamera::setDistortionParam(float _k1, float _k2, float _p1, float _p
     p2 = _p2;
 }
 
-Vector2f DistortCamera::h(Vector3f ptr)
+Vector2d DistortCamera::h(Vector3d ptr)
 {
-    Vector2f z, dt, uv;
-    float u, v, r, dr;
+    Vector2d z, dt, uv;
+    double u, v, r, dr;
     u = ptr(0)/ptr(2);
     v = ptr(1)/ptr(2);
     
@@ -80,15 +80,15 @@ Vector2f DistortCamera::h(Vector3f ptr)
 }
 
 
-MatrixXf DistortCamera::Jh(Vector3f ptr)
+MatrixXd DistortCamera::Jh(Vector3d ptr)
 {
-    Vector2f dt;
-    Matrix2f focus;
-    MatrixXf J(2,3);
-    MatrixXf Jdistort(2,3);
-    float x, y, z, u, v, r, dr, x2, y2, z2, z3;
-    float ddrdx, ddrdy, ddrdz;
-    Vector2f ddtdx, ddtdy, ddtdz;
+    Vector2d dt;
+    Matrix2d focus;
+    MatrixXd J(2,3);
+    MatrixXd Jdistort(2,3);
+    double x, y, z, u, v, r, dr, x2, y2, z2, z3;
+    double ddrdx, ddrdy, ddrdz;
+    Vector2d ddtdx, ddtdy, ddtdz;
     
     focus(0,0) = fx;
     focus(1,1) = fy;
@@ -124,7 +124,7 @@ MatrixXf DistortCamera::Jh(Vector3f ptr)
     ddtdz(1) = - p1*((2*x2)/z3 + (6*y2)/z3) - (4*p2*x*y)/z3;
     
     
-    Jdistort = MatrixXf::Zero(2, 3);
+    Jdistort = MatrixXd::Zero(2, 3);
     
     Jdistort(0,0) =    dr/z + ddrdx*u + ddtdx(0);
     Jdistort(0,1) =           ddrdy*u + ddtdy(0);
@@ -139,23 +139,23 @@ MatrixXf DistortCamera::Jh(Vector3f ptr)
 }
 
 // measure is 2f
-Vector3f DistortCamera::triangulate(MatrixXf measure, MatrixXf pose)
+Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
 {
-    Vector3f return_pose = Vector3f(0.0f, 0.0f, 0.0f);
+    Vector3d return_pose = Vector3d(0.0f, 0.0f, 0.0f);
     int num_item = (int)pose.cols();
     
-    MatrixXf q_list = MatrixXf::Zero(4, num_item);
-    MatrixXf t_list = MatrixXf::Zero(3, num_item);
+    MatrixXd q_list = MatrixXd::Zero(4, num_item);
+    MatrixXd t_list = MatrixXd::Zero(3, num_item);
     
-    Matrix3f R_wc0 = quaternion_to_R(pose.block<4,1>(0,0));
-    Vector3f t_wc0 = pose.block<3,1>(4,0);
+    Matrix3d R_wc0 = quaternion_to_R(pose.block<4,1>(0,0));
+    Vector3d t_wc0 = pose.block<3,1>(4,0);
     
-    Matrix3f R_wci = Matrix3f::Identity(3, 3);
-    Vector3f t_wci = Vector3f::Zero(3, 1);
-    Matrix3f R_c0ci, R_cic0;
-    Vector3f t_c0ci, t_cic0;
+    Matrix3d R_wci = Matrix3d::Identity(3, 3);
+    Vector3d t_wci = Vector3d::Zero(3, 1);
+    Matrix3d R_c0ci, R_cic0;
+    Vector3d t_c0ci, t_cic0;
     
-    q_list.col(0) = Vector4f(1,0,0,0);
+    q_list.col(0) = Vector4d(1,0,0,0);
     t_list.col(0) = t_wci;
     
     // TODO: rewrite this piece use quaternion
@@ -177,17 +177,17 @@ Vector3f DistortCamera::triangulate(MatrixXf measure, MatrixXf pose)
 //    cout << "t_list is" << endl << t_list << endl;
     
     // init estimation
-    Vector3f theta = Vector3f(0.1f, 0.1f, 0.1f);
-    Vector3f g_ptr = Vector3f(0.0f, 0.0f, 0.0f);
-    VectorXf f = VectorXf::Zero(num_item*2);
-    MatrixXf J = MatrixXf::Zero(num_item*2,3);
-    Matrix3f Jg = Matrix3f::Zero(3,3);
-    MatrixXf Ji;
-    MatrixXf A;
-    MatrixXf b;
+    Vector3d theta = Vector3d(0.1f, 0.1f, 0.1f);
+    Vector3d g_ptr = Vector3d(0.0f, 0.0f, 0.0f);
+    VectorXd f = VectorXd::Zero(num_item*2);
+    MatrixXd J = MatrixXd::Zero(num_item*2,3);
+    Matrix3d Jg = Matrix3d::Zero(3,3);
+    MatrixXd Ji;
+    MatrixXd A;
+    MatrixXd b;
     for (int itr = 0; itr < 100; itr++)
     {
-        Vector3f tmp_theta = Vector3f(theta(0), theta(1), 1);
+        Vector3d tmp_theta = Vector3d(theta(0), theta(1), 1);
         for (int i = 0; i < num_item; i++)
         {
             R_cic0 = quaternion_to_R(q_list.col(i));

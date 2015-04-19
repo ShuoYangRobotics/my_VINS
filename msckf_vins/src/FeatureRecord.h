@@ -22,8 +22,8 @@ using namespace Eigen;
 class FeatureInformation
 {
     public:
-        Vector3f point;
-        FeatureInformation(const Vector3f &_point): point(_point)
+        Vector3d point;
+        FeatureInformation(const Vector3d &_point): point(_point)
         {}
 };
 
@@ -46,10 +46,10 @@ class FeatureRecord
         }
     
     
-        FeatureRecord(int _start_frame, const Vector3f &_feature_point):
-        start_frame(_start_frame),
+        FeatureRecord(int _start_frame, const Vector3d &_feature_point):
         feature_points {FeatureInformation(_feature_point)}
         {
+            start_frame = _start_frame;
             is_used = false;
             is_lost = false;
             is_outlier = false;

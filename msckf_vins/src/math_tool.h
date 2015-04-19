@@ -11,10 +11,10 @@
 
 #include <Eigen/Dense>
 using namespace Eigen;
-Matrix3f quaternion_to_R(const Vector4f& q);
-Vector4f R_to_quaternion(const Matrix3f& R);
-Matrix3f skew_mtx(const Vector3f& w);
-Matrix4f omega_mtx(const Vector3f& w);
-Vector4f delta_quaternion(const Vector3f& w_prev, const Vector3f& w_curr, const float dt);
-Vector4f quaternion_correct(Vector4f q, Vector3f d_theta);
+Matrix3d quaternion_to_R(const Vector4d& q);
+Vector4d R_to_quaternion(const Matrix3d& R);
+Matrix3d skew_mtx(const Vector3d& w);
+Matrix4d omega_mtx(const Vector3d& w);
+Vector4d delta_quaternion(const Vector3d& w_prev, const Vector3d& w_curr, const double dt);
+Vector4d quaternion_correct(Vector4d q, Vector3d d_theta);
 #endif /* defined(__MyTriangulation__math_tool__) */

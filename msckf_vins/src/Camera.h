@@ -16,36 +16,36 @@ class DistortCamera {
     int nRows;
     int nCols;
     
-    float fx;
-    float fy;
+    double fx;
+    double fy;
     
-    float ox;
-    float oy;
+    double ox;
+    double oy;
     
-    float focus_length;
+    double focus_length;
     
     // distortion parameters, opencv k1, k2, p1, p2, k3
-    float k1;
-    float k2;
-    float p1;
-    float p2;
-    float k3;
+    double k1;
+    double k2;
+    double p1;
+    double p2;
+    double k3;
     
-    Eigen::Matrix3f K;
-    Eigen::Vector2f optical;
-    Eigen::Matrix2f focusMtx;
+    Eigen::Matrix3d K;
+    Eigen::Vector2d optical;
+    Eigen::Matrix2d focusMtx;
     
 public:
     DistortCamera();
-    void setImageSize(float _height, float _width);
-    void setIntrinsicMtx(float _fx, float _fy, float _ox, float _oy);
-    void setDistortionParam(float _k1, float _k2, float _p1, float _p2, float _k3);
+    void setImageSize(double _height, double _width);
+    void setIntrinsicMtx(double _fx, double _fy, double _ox, double _oy);
+    void setDistortionParam(double _k1, double _k2, double _p1, double _p2, double _k3);
     
-    Eigen::Vector2f h(Eigen::Vector3f ptr);
+    Eigen::Vector2d h(Eigen::Vector3d ptr);
     
-    Eigen::MatrixXf Jh(Eigen::Vector3f ptr);
+    Eigen::MatrixXd Jh(Eigen::Vector3d ptr);
     
-    Eigen::Vector3f triangulate(Eigen::MatrixXf measure, Eigen::MatrixXf pose);
+    Eigen::Vector3d triangulate(Eigen::MatrixXd measure, Eigen::MatrixXd pose);
 };
 
 #endif

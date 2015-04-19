@@ -10,17 +10,17 @@
 #include "math_tool.h"
 #include "g_param.h"
 
-static Vector3f g(0.0f, 0.0f, -9.81f);
+static Vector3d g(0.0f, 0.0f, -9.8f);
 
 MSCKF::MSCKF()
 {
-    fullNominalState = VectorXf::Zero(NOMINAL_STATE_SIZE + 3);
+    fullNominalState = VectorXd::Zero(NOMINAL_STATE_SIZE + 3);
     
-    phi = MatrixXf::Identity(ERROR_STATE_SIZE, ERROR_STATE_SIZE);
-    errorCovariance = MatrixXf::Identity(ERROR_STATE_SIZE, ERROR_STATE_SIZE);
-    fullErrorCovariance = MatrixXf::Identity(ERROR_STATE_SIZE + 3, ERROR_STATE_SIZE + 3);
+    phi = MatrixXd::Identity(ERROR_STATE_SIZE, ERROR_STATE_SIZE);
+    errorCovariance = MatrixXd::Identity(ERROR_STATE_SIZE, ERROR_STATE_SIZE);
+    fullErrorCovariance = MatrixXd::Identity(ERROR_STATE_SIZE + 3, ERROR_STATE_SIZE + 3);
     
-    Nc = MatrixXf::Zero(ERROR_STATE_SIZE, ERROR_STATE_SIZE);
+    Nc = MatrixXd::Zero(ERROR_STATE_SIZE, ERROR_STATE_SIZE);
     setNoiseMatrix(0.1f, 0.1f, 0.1f, 0.1f);
     
     current_time = -1.0f;
@@ -36,13 +36,13 @@ MSCKF::MSCKF()
     
     current_frame = -1;   // initially no frame
     
-    R_cb = Matrix3f::Identity();
-//    R_cb <<
-//        0, -1, 0,
-//        0,  0, 1,
-//       -1,  0, 0;
+//    R_cb = Matrix3d::Identity();
+    R_cb <<
+        0, -1, 0,
+        0,  0, 1,
+       -1,  0, 0;
     
-//    fullNominalState.segment(16, 3) = Vector3f(-0.14, -0.02, 0.0);   //p_cb
+    fullNominalState.segment(16, 3) = Vector3d(-0.14, -0.02, 0.0);   //p_cb
 }
 
 MSCKF::~MSCKF()
@@ -54,20 +54,20 @@ void MSCKF::resetError()
 {
 }
 
-void MSCKF::setNoiseMatrix(float dgc, float dac, float dwgc, float dwac)
+void MSCKF::setNoiseMatrix(double dgc, double dac, double dwgc, double dwac)
 {
-    Nc.block<3,3>(0, 0)   = Matrix3f::Identity() * dgc;
-    Nc.block<3,3>(6, 6)   = Matrix3f::Identity() * dac;
-    Nc.block<3,3>(9, 9)   = Matrix3f::Identity() * dwgc;
-    Nc.block<3,3>(12, 12) = Matrix3f::Identity() * dwac;
+    Nc.block<3,3>(0, 0)   = Matrix3d::Identity() * dgc;
+    Nc.block<3,3>(6, 6)   = Matrix3d::Identity() * dac;
+    Nc.block<3,3>(9, 9)   = Matrix3d::Identity() * dwgc;
+    Nc.block<3,3>(12, 12) = Matrix3d::Identity() * dwac;
 }
 
-void MSCKF::setMeasureNoise(float _noise)
+void MSCKF::setMeasureNoise(double _noise)
 {
     measure_noise = _noise;
 }
 
-void MSCKF::setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vector3f ba)
+void MSCKF::setNominalState(Vector4d q, Vector3d p, Vector3d v, Vector3d bg, Vector3d ba)
 {
     fullNominalState.segment(0, 4)  = q;
     fullNominalState.segment(4, 3)  = p;
@@ -76,19 +76,19 @@ void MSCKF::setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vec
     fullNominalState.segment(13, 3) = ba;
 }
 
-void MSCKF::setCalibParam(Vector3f p_cb, float fx, float fy, float ox, float oy, float k1, float k2, float p1, float p2, float k3)
+void MSCKF::setCalibParam(Vector3d p_cb, double fx, double fy, double ox, double oy, double k1, double k2, double p1, double p2, double k3)
 {
     fullNominalState.segment(16, 3) = p_cb;
     cam.setIntrinsicMtx(fx, fy, ox, oy);
     cam.setDistortionParam(k1, k2, p1, p2, k3);
 }
 
-void MSCKF::setIMUCameraRotation(Matrix3f _R_cb)
+void MSCKF::setIMUCameraRotation(Matrix3d _R_cb)
 {
     R_cb = _R_cb;
 }
 
-void MSCKF::correctNominalState(VectorXf delta)
+void MSCKF::correctNominalState(VectorXd delta)
 {
     fullNominalState.segment(0, 4)  = quaternion_correct(fullNominalState.segment(0, 4), delta.segment(0, 3));
     fullNominalState.segment(4, 3)  = fullNominalState.segment(4, 3)  + delta.segment(3, 3);
@@ -122,12 +122,12 @@ void MSCKF::correctNominalState(VectorXf delta)
     }
 }
 
-void MSCKF::processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity)
+void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_velocity)
 {
-    Vector4f small_rotation;
-    Matrix3f d_R, prev_R, average_R, phi_vbg;
-    Vector3f s_hat, y_hat;
-    Vector3f tmp_vel, tmp_pos;
+    Vector4d small_rotation;
+    Matrix3d d_R, prev_R, average_R, phi_vbg;
+    Vector3d s_hat, y_hat;
+    Vector3d tmp_vel, tmp_pos;
     // read nomial state to get variables
     spatial_quaternion = fullNominalState.segment(0, 4); //q_gb
     spatial_position = fullNominalState.segment(4, 3);
@@ -135,7 +135,15 @@ void MSCKF::processIMU(float t, Vector3f linear_acceleration, Vector3f angular_v
     gyro_bias = fullNominalState.segment(10, 3);
     acce_bias = fullNominalState.segment(13, 3);
     
-    spatial_rotation = quaternion_to_R(spatial_quaternion); //R_gb
+    Quaterniond spa(
+      spatial_quaternion(0),
+      spatial_quaternion(1),
+      spatial_quaternion(2),
+      spatial_quaternion(3)
+    );
+  
+    spatial_rotation = spa;
+    //spatial_rotation = quaternion_to_R(spatial_quaternion); //R_gb
     if (current_time < 0.0f)
     {
         current_time = t;
@@ -144,43 +152,71 @@ void MSCKF::processIMU(float t, Vector3f linear_acceleration, Vector3f angular_v
         return;
     }
     
-    float dt = t - current_time;
+    double dt = t - current_time;
+    cout << "dt: " << dt << endl;
     
     current_time = t;
     curr_w = angular_velocity - gyro_bias;
     curr_a = linear_acceleration - acce_bias;
+
     
     //calculate q_B{l+1}B{l}
     small_rotation = delta_quaternion(prev_w, curr_w, dt);
     d_R = quaternion_to_R(small_rotation);
-    
     // defined in paper P.49
-    s_hat = 0.5f * dt * (d_R.transpose() * curr_a + prev_a);
+    //s_hat = 0.5f * dt * (d_R.transpose() * curr_a + prev_a);
+    s_hat = dt *curr_a;
     y_hat = 0.5f * dt * s_hat;
     
     /* update nominal state */
-    tmp_vel = spatial_velocity + spatial_rotation.transpose() * s_hat + g * dt;
+    prev_R = spatial_rotation;
+
+    Quaterniond dq(1,
+                       curr_w(0) * dt / 2,
+                       curr_w(1) * dt / 2,
+                       curr_w(2) * dt / 2);
+        dq.w() = 1 - dq.vec().transpose() * dq.vec();
+    Quaterniond q(spatial_rotation);
+        spatial_rotation = (q * dq).normalized();
+
     tmp_pos = spatial_position + spatial_velocity * dt
-                               + spatial_rotation.transpose() * y_hat + 0.5f * g * dt * dt;
-    
+                               + spatial_rotation * y_hat;
+    tmp_vel = spatial_velocity + spatial_rotation * s_hat + g * dt;
     spatial_velocity = tmp_vel;
     spatial_position = tmp_pos;
-    prev_R = spatial_rotation;
-    spatial_rotation = spatial_rotation*d_R.transpose(); //R_gb{l+1} = R_gb{l}*q_B{l}B{l+1}
+
+    //cout << "curr_w" << endl << curr_w << endl;
+    //cout << "curr_a" << endl << curr_a << endl;
+    //cout << "spatal acc" << endl << spatial_rotation * s_hat / dt + g  << endl;
+    //cout << "dR"  << endl<< d_R << endl;
+    //cout << "tmp_pos" << endl << tmp_pos << endl;
     
-    fullNominalState.segment(0, 4) = R_to_quaternion(spatial_rotation); //q_gb
+    //spatial_rotation = spatial_rotation*d_R.transpose(); //R_gb{l+1} = R_gb{l}*q_B{l}B{l+1}
+    
+    //cout << R_to_quaternion(spatial_rotation) << endl;
+    spa = spatial_rotation;
+    spatial_quaternion(0) = spa.w();
+    spatial_quaternion(1) = spa.x();
+    spatial_quaternion(2) = spa.y();
+    spatial_quaternion(3) = spa.z();
+    //fullNominalState.segment(0, 4) = R_to_quaternion(spatial_rotation); //q_gb
+    fullNominalState.segment(0, 4) = spatial_quaternion; //q_gb
     fullNominalState.segment(4, 3) = spatial_position;
     fullNominalState.segment(7, 3) = spatial_velocity;
+
+    // save prev
+    prev_w = curr_w;
+    prev_a = curr_a;
     
     /* propogate error covariance */
     average_R = prev_R.transpose()+spatial_rotation.transpose();
-    phi = MatrixXf::Identity(ERROR_STATE_SIZE,ERROR_STATE_SIZE);
+    phi = MatrixXd::Identity(ERROR_STATE_SIZE,ERROR_STATE_SIZE);
     //1. phi_pq
     phi.block<3,3>(3,0) = -skew_mtx(prev_R * y_hat);
     //2. phi_vq
     phi.block<3,3>(6,0) = -skew_mtx(prev_R * s_hat);
     //3. one bloack need to times dt;
-    phi.block<3,3>(3,6) = Matrix3f::Identity() * dt;
+    phi.block<3,3>(3,6) = Matrix3d::Identity() * dt;
     //4. phi_qbg
     phi.block<3,3>(0,9) = -0.5f * dt * average_R;
     //5. phi_vbg
@@ -232,9 +268,9 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
     addFeatures(image);     // is_lost modified here
 
     //check is_lost to get measurement
-    MatrixXf measure_mtx;
-    MatrixXf pose_mtx;
-    Vector3f ptr_pose;
+    MatrixXd measure_mtx;
+    MatrixXd pose_mtx;
+    Vector3d ptr_pose;
     
     // clear these two lists
     residual_list.clear();
@@ -259,8 +295,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 
                 int num_frame = current_frame - item.second.start_frame;
                 
-                measure_mtx = MatrixXf::Zero(2, num_frame);
-                pose_mtx = MatrixXf::Zero(7, num_frame);
+                measure_mtx = MatrixXd::Zero(2, num_frame);
+                pose_mtx = MatrixXd::Zero(7, num_frame);
                 
                 for (int i = item.second.start_frame; i < current_frame; i++)
                 {
@@ -269,8 +305,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                     measure_mtx(1, i-item.second.start_frame) = itr_f->point.y();
                 
                     // construct pose
-//                    Matrix3f R_gb, R_gc;
-//                    Vector3f p_gb, p_gc;
+//                    Matrix3d R_gb, R_gc;
+//                    Vector3d p_gb, p_gc;
 //                    R_gb = quaternion_to_R(itr_s->q);
 //                    p_gb = itr_s->p;
 //                    
@@ -309,8 +345,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 {
                     num_measure++;
                     // construct H matrix use ptr_pose, item.second.start_frame and current_frame
-                    VectorXf ri;
-                    MatrixXf Hi;
+                    VectorXd ri;
+                    MatrixXd Hi;
                     getResidualH(ri, Hi, ptr_pose, measure_mtx, pose_mtx, item.second.start_frame);
                     row_H += (2 * num_frame - 3); // after feature error marginalization
                     
@@ -340,11 +376,11 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
         int col_H = (int)fullErrorCovariance.rows();;
         // use ri and Hi to do KF update
         /* 1. construct H matrix */
-        MatrixXf H = MatrixXf::Zero(row_H, col_H);
-        VectorXf r = VectorXf::Zero(row_H);
+        MatrixXd H = MatrixXd::Zero(row_H, col_H);
+        VectorXd r = VectorXd::Zero(row_H);
         
-        std::list<MatrixXf>::iterator itr_H = H_mtx_list.begin();
-        std::list<VectorXf>::iterator itr_r = residual_list.begin();
+        std::list<MatrixXd>::iterator itr_H = H_mtx_list.begin();
+        std::list<VectorXd>::iterator itr_r = residual_list.begin();
         std::list<int>::iterator itr_H_size = H_mtx_block_size_list.begin();
         
         int row_H_count = 0;
@@ -362,33 +398,33 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
             itr_H_size++;
         }
 
-        VectorXf delta_x;
+        VectorXd delta_x;
         // when there are a lot of features, use QR of H to speed up computation
         if (H.rows()>H.cols())
         {
             HouseholderQR<MatrixXd> qr(H.cast<double>());
             MatrixXd R = qr.matrixQR().triangularView<Upper>();
             MatrixXd Q = qr.householderQ();
-            MatrixXf Th = R.topRows(col_H).cast<float>();
-            MatrixXf Q1 = Q.leftCols(col_H).cast<float>();
+            MatrixXd Th = R.topRows(col_H).cast<double>();
+            MatrixXd Q1 = Q.leftCols(col_H).cast<double>();
             
             /* 3. calculate Kalman gain */
-            MatrixXf Rq = MatrixXf::Identity(row_H, row_H) * measure_noise*measure_noise;
-            MatrixXf tmpK = (Th * fullErrorCovariance * Th.transpose() + Rq).inverse();
-            MatrixXf K = fullErrorCovariance * Th.transpose() * tmpK;
+            MatrixXd Rq = MatrixXd::Identity(row_H, row_H) * measure_noise*measure_noise;
+            MatrixXd tmpK = (Th * fullErrorCovariance * Th.transpose() + Rq).inverse();
+            MatrixXd K = fullErrorCovariance * Th.transpose() * tmpK;
         
             /* 4. update error covariance */
-            MatrixXf ImKH = MatrixXf::Identity(col_H, col_H) - K * Th;
+            MatrixXd ImKH = MatrixXd::Identity(col_H, col_H) - K * Th;
             fullErrorCovariance = ImKH * fullErrorCovariance * ImKH.transpose() + K * Rq * K.transpose();
         
             delta_x = K * Q1.transpose() * r;
         }
         else
         {
-            MatrixXf Rq = MatrixXf::Identity(row_H, row_H) * measure_noise*measure_noise;
-            MatrixXf tmpK = (H * fullErrorCovariance * H.transpose() + Rq).inverse();
-            MatrixXf K = fullErrorCovariance * H.transpose() * tmpK;
-            MatrixXf ImKH = MatrixXf::Identity(col_H, col_H) - K * H;
+            MatrixXd Rq = MatrixXd::Identity(row_H, row_H) * measure_noise*measure_noise;
+            MatrixXd tmpK = (H * fullErrorCovariance * H.transpose() + Rq).inverse();
+            MatrixXd K = fullErrorCovariance * H.transpose() * tmpK;
+            MatrixXd ImKH = MatrixXd::Identity(col_H, col_H) - K * H;
             fullErrorCovariance = ImKH * fullErrorCovariance*ImKH.transpose() + K * Rq * K.transpose();
             delta_x = K * r;
         }
@@ -458,9 +494,9 @@ void MSCKF::addSlideState()
     int nominalStateLength = (int)fullNominalState.size();
     int errorStateLength = (int)fullErrorCovariance.rows();
     
-    VectorXf tmpNominal = VectorXf::Zero(nominalStateLength + NOMINAL_POSE_STATE_SIZE);
-    MatrixXf tmpCovariance = MatrixXf::Zero(errorStateLength + ERROR_POSE_STATE_SIZE, errorStateLength + ERROR_POSE_STATE_SIZE);
-    MatrixXf Jpi = MatrixXf::Zero(9, errorStateLength);
+    VectorXd tmpNominal = VectorXd::Zero(nominalStateLength + NOMINAL_POSE_STATE_SIZE);
+    MatrixXd tmpCovariance = MatrixXd::Zero(errorStateLength + ERROR_POSE_STATE_SIZE, errorStateLength + ERROR_POSE_STATE_SIZE);
+    MatrixXd Jpi = MatrixXd::Zero(9, errorStateLength);
     
     tmpNominal.head(nominalStateLength) = fullNominalState;
     tmpNominal.segment(nominalStateLength, NOMINAL_POSE_STATE_SIZE) = fullNominalState.head(NOMINAL_POSE_STATE_SIZE);
@@ -472,9 +508,9 @@ void MSCKF::addSlideState()
     
     slidingWindow.push_back(newState);
     
-    Jpi.block<3,3>(0, 0) = Matrix3f::Identity(3, 3);
-    Jpi.block<3,3>(3, 3) = Matrix3f::Identity(3, 3);
-    Jpi.block<3,3>(6, 6) = Matrix3f::Identity(3, 3);
+    Jpi.block<3,3>(0, 0) = Matrix3d::Identity(3, 3);
+    Jpi.block<3,3>(3, 3) = Matrix3d::Identity(3, 3);
+    Jpi.block<3,3>(6, 6) = Matrix3d::Identity(3, 3);
     tmpCovariance.block(0, 0, errorStateLength, errorStateLength) = fullErrorCovariance;
     tmpCovariance.block(errorStateLength, 0, 9, errorStateLength) = Jpi * fullErrorCovariance;
     tmpCovariance.block(0, errorStateLength, errorStateLength, 9) = fullErrorCovariance * Jpi.transpose();
@@ -490,18 +526,18 @@ void MSCKF::addFeatures(const vector<pair<int, Vector3d>> &image)
     for (auto & id_pts : image)
     {
         int   id = id_pts.first;
-        float x = id_pts.second(0);
-        float y = id_pts.second(1);
-        float z = id_pts.second(2);
+        double x = id_pts.second(0);
+        double y = id_pts.second(1);
+        double z = id_pts.second(2);
         
         // this is a new feature record
         if (feature_record_dict.find(id) == feature_record_dict.end())
         {
-            feature_record_dict[id] = FeatureRecord(current_frame, Vector3f(x, y, z));
+            feature_record_dict[id] = FeatureRecord(current_frame, Vector3d(x, y, z));
         }
         else // append to existing record
         {
-            feature_record_dict[id].feature_points.push_back(FeatureInformation(Vector3f(x, y, z)));
+            feature_record_dict[id].feature_points.push_back(FeatureInformation(Vector3d(x, y, z)));
             feature_record_dict[id].is_lost = false;
         }
     }
@@ -518,8 +554,8 @@ void MSCKF::removeSlideState(int index, int total)
     int nominalStateLength = (int)fullNominalState.size();
     int errorStateLength = (int)fullErrorCovariance.rows();
     
-    VectorXf tmpNominal = VectorXf::Zero(nominalStateLength - NOMINAL_POSE_STATE_SIZE);
-    MatrixXf tmpCovariance = MatrixXf::Zero(errorStateLength - ERROR_POSE_STATE_SIZE, errorStateLength - ERROR_POSE_STATE_SIZE);
+    VectorXd tmpNominal = VectorXd::Zero(nominalStateLength - NOMINAL_POSE_STATE_SIZE);
+    MatrixXd tmpCovariance = MatrixXd::Zero(errorStateLength - ERROR_POSE_STATE_SIZE, errorStateLength - ERROR_POSE_STATE_SIZE);
     
     /* remove nomial state */
     tmpNominal.head(NOMINAL_STATE_SIZE + 3) = fullNominalState.head(NOMINAL_STATE_SIZE + 3);
@@ -618,9 +654,9 @@ void MSCKF::removeFrameFeatures(int index)
     }
 }
 
-Vector2f MSCKF::projectPoint(Vector3f feature_pose, Matrix3f R_gb, Vector3f p_gb, Vector3f p_cb)
+Vector2d MSCKF::projectPoint(Vector3d feature_pose, Matrix3d R_gb, Vector3d p_gb, Vector3d p_cb)
 {
-    Vector2f zij;
+    Vector2d zij;
     zij = cam.h(R_cb * R_gb.transpose() * (feature_pose - p_gb) + p_cb);
     
     return zij;
@@ -629,36 +665,36 @@ Vector2f MSCKF::projectPoint(Vector3f feature_pose, Matrix3f R_gb, Vector3f p_gb
 /*
  *   frame_offset: used to place HxBj in right place in H
  */
-void MSCKF::getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, MatrixXf measure, MatrixXf pose_mtx, int frame_offset)
+void MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, MatrixXd measure, MatrixXd pose_mtx, int frame_offset)
 {
     int num_frame = (int)pose_mtx.cols();
     int errorStateLength = (int)fullErrorCovariance.rows();
     
-    ri = VectorXf::Zero(2 * num_frame);
-    Hi = MatrixXf::Zero(2 * num_frame, errorStateLength);    // Hi cols == error state length
+    ri = VectorXd::Zero(2 * num_frame);
+    Hi = MatrixXd::Zero(2 * num_frame, errorStateLength);    // Hi cols == error state length
     
-    MatrixXf HxBj, Hc;
-    MatrixXf Mij, tmp39;
+    MatrixXd HxBj, Hc;
+    MatrixXd Mij, tmp39;
     
     MatrixXd Hfi;
-    MatrixXf Hf; // use double precision to increase numerial result
+    MatrixXd Hf; // use double precision to increase numerial result
     Hfi = MatrixXd::Zero(2 * num_frame, 3);
     
     for(int j = 0; j < num_frame; j++)
     {
 //        cout << "frame is " << frame_offset+j << endl;
-        Matrix3f R_gb = quaternion_to_R(pose_mtx.block<4, 1>(0, j));
-        Vector3f feature_in_c = R_cb * R_gb.transpose() * (feature_pose - pose_mtx.block<3, 1>(4, j)) + fullNominalState.segment(16, 3);
-        Vector2f projPtr = projectPoint(feature_pose, R_gb, pose_mtx.block<3, 1>(4, j), fullNominalState.segment(16, 3));
+        Matrix3d R_gb = quaternion_to_R(pose_mtx.block<4, 1>(0, j));
+        Vector3d feature_in_c = R_cb * R_gb.transpose() * (feature_pose - pose_mtx.block<3, 1>(4, j)) + fullNominalState.segment(16, 3);
+        Vector2d projPtr = projectPoint(feature_pose, R_gb, pose_mtx.block<3, 1>(4, j), fullNominalState.segment(16, 3));
         
 //        cout << "measure is " << measure.col(j).transpose() << endl;
 //        cout << "estimat is " << projPtr << endl;
         ri.segment(j * 2, 2) = measure.col(j) - projPtr;
         
         Mij = cam.Jh(feature_in_c) * R_cb * R_gb.transpose();
-        tmp39 = MatrixXf::Zero(3, 9);
+        tmp39 = MatrixXd::Zero(3, 9);
         tmp39.block<3, 3>(0, 0) = skew_mtx(feature_pose - pose_mtx.block<3, 1>(4, j));
-        tmp39.block<3, 3>(0, 3) = -Matrix3f::Identity();
+        tmp39.block<3, 3>(0, 3) = -Matrix3d::Identity();
         
         HxBj = Mij * tmp39;                           // 2x9
         Hc = cam.Jh(feature_in_c);   // 2x3
@@ -673,7 +709,7 @@ void MSCKF::getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, Matr
     }
     // now carry out feature error marginalization
     JacobiSVD<MatrixXd> svd(Hfi.transpose(), ComputeFullV);
-    MatrixXf left_null = svd.matrixV().cast<float>().rightCols(2 * num_frame - 3).transpose();
+    MatrixXd left_null = svd.matrixV().cast<double>().rightCols(2 * num_frame - 3).transpose();
     
 //    MatrixXd S = svd.singularValues().asDiagonal();
 //    MatrixXd U = svd.matrixU();
@@ -762,35 +798,35 @@ void MSCKF::printErrorCovariance(bool is_full)
     }
 }
 
-Vector4f MSCKF::getQuaternion()
+Vector4d MSCKF::getQuaternion()
 {
     return fullNominalState.head(4);
 }
 
-Matrix3f MSCKF::getRotation()
+Matrix3d MSCKF::getRotation()
 {
-    Vector4f q = fullNominalState.head(4);
+    Vector4d q = fullNominalState.head(4);
     return quaternion_to_R(q);
 }
 
-Vector3f MSCKF::getPosition()
+Vector3d MSCKF::getPosition()
 {
     return fullNominalState.segment(4, 3);
 }
 
-Vector3f MSCKF::getVelocity()
+Vector3d MSCKF::getVelocity()
 {
     return fullNominalState.segment(7, 3);
 }
-Vector3f MSCKF::getGyroBias()
+Vector3d MSCKF::getGyroBias()
 {
     return fullNominalState.segment(10, 3);
 }
-Vector3f MSCKF::getAcceBias()
+Vector3d MSCKF::getAcceBias()
 {
     return fullNominalState.segment(13, 3);
 }
-Vector3f MSCKF::getVIOffset()
+Vector3d MSCKF::getVIOffset()
 {
     return fullNominalState.segment(16, 3);
 }

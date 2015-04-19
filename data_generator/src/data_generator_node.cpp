@@ -41,7 +41,7 @@ int main(int argc, char** argv)
     //    loop_rate.sleep();
 
     sensor_msgs::PointCloud point_cloud;
-    point_cloud.header.frame_id = "my_frame";
+    point_cloud.header.frame_id = "world";
     point_cloud.header.stamp = ros::Time();
     for (auto & it : generator.getCloud())
     {
@@ -58,7 +58,7 @@ int main(int argc, char** argv)
     int publish_count = 0;
 
     nav_msgs::Path path;
-    path.header.frame_id = "my_frame";
+    path.header.frame_id = "world";
 
     while (ros::ok())
     {
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
 
         //publish visulization data
         nav_msgs::Odometry odometry;
-        odometry.header.frame_id = "my_frame";
+        odometry.header.frame_id = "world";
         odometry.header.stamp = ros::Time(current_time);
         odometry.pose.pose.position.x = position(0);
         odometry.pose.pose.position.y = position(1);
@@ -91,7 +91,7 @@ int main(int argc, char** argv)
         pub_odometry.publish(odometry);
 
         geometry_msgs::PoseStamped pose_stamped;
-        pose_stamped.header.frame_id = "my_frame";
+        pose_stamped.header.frame_id = "world";
         pose_stamped.header.stamp = ros::Time(current_time);
         pose_stamped.pose = odometry.pose.pose;
         path.poses.push_back(pose_stamped);
@@ -101,7 +101,7 @@ int main(int argc, char** argv)
 
         //publish imu data
         sensor_msgs::Imu imu;
-        imu.header.frame_id = "my_frame";
+        imu.header.frame_id = "world";
         imu.header.stamp = ros::Time(current_time);
         imu.linear_acceleration.x = linear_acceleration(0);
         imu.linear_acceleration.y = linear_acceleration(1);
@@ -159,8 +159,8 @@ int main(int argc, char** argv)
             feature.channels.push_back(pixel);
             pub_image.publish(feature);
             ROS_INFO("publish image data with stamp %lf", feature.header.stamp.toSec());
-            cv::imshow("camera image", simu_img);
-            cv::waitKey(100);
+            //cv::imshow("camera image", simu_img);
+            //cv::waitKey(100);
             //if (generator.getTime() > DataGenerator::MAX_TIME)
             //    break;
         }

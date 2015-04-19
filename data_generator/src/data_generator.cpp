@@ -1,12 +1,12 @@
 #include "data_generator.h"
 
-#define WITH_NOISE 0
+//#define WITH_NOISE 
 
 DataGenerator::DataGenerator()
 {
     srand(0);
     t = 0;
-    current_id = 0;;
+    current_id = 0;
     for (int i = 0; i < NUM_POINTS; i++)
     {
         pts[i * 3 + 0] = rand() % (6 * MAX_BOX) - 3 * MAX_BOX;
@@ -68,15 +68,16 @@ Vector3d DataGenerator::getPosition()
     double y = 10*sin(t/10);
     double z = 3;
 
-    //t = backup;
     return Vector3d(x, y, z);
 }
 
 Matrix3d DataGenerator::getRotation()
 {
-    return (AngleAxisd(30.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitX())
-            * AngleAxisd(40.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitY())
-            * AngleAxisd(0, Vector3d::UnitZ())).toRotationMatrix();
+    //return (AngleAxisd(30.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitX())
+    //        * AngleAxisd(40.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitY())
+    //        * AngleAxisd(0, Vector3d::UnitZ())).toRotationMatrix();
+    return AngleAxisd(30.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitZ()).toRotationMatrix();
+    //return Matrix3d::Identity();
 }
 
 Vector3d DataGenerator::getAngularVelocity()
@@ -87,7 +88,7 @@ Vector3d DataGenerator::getAngularVelocity()
     Matrix3d drot = (getRotation() - rot) / delta_t;
     t -= delta_t;
     Matrix3d skew = rot.inverse() * drot;
-#if WITH_NOISE
+#ifdef WITH_NOISE
     Vector3d disturb = Vector3d(distribution(generator) * sqrt(gyr_cov(0, 0)),
                                 distribution(generator) * sqrt(gyr_cov(1, 1)),
                                 distribution(generator) * sqrt(gyr_cov(2, 2))
@@ -100,26 +101,32 @@ Vector3d DataGenerator::getAngularVelocity()
 
 Vector3d DataGenerator::getVelocity()
 {
-    double dx = 3 * pow(t, 2) / pow(MAX_TIME, 3) * MAX_BOX;
-    double dy = MAX_BOX / 2.0 * -sin(t / MAX_TIME * PI * 2 * 2) * (1.0 / MAX_TIME * PI * 2 * 2);
-    double dz = MAX_BOX / 2.0 * -sin(t / MAX_TIME * PI * 2) * (1.0 / MAX_TIME * PI * 2);
+    //double dx = 3 * pow(t, 2) / pow(MAX_TIME, 3) * MAX_BOX;
+    //double dy = MAX_BOX / 2.0 * -sin(t / MAX_TIME * PI * 2 * 2) * (1.0 / MAX_TIME * PI * 2 * 2);
+    //double dz = MAX_BOX / 2.0 * -sin(t / MAX_TIME * PI * 2) * (1.0 / MAX_TIME * PI * 2);
+    double dx = -sin(t/10);
+    double dy =  cos(t/10);
+    double dz =  0;
 
     return getRotation().inverse() * Vector3d(dx, dy, dz);
 }
 
 Vector3d DataGenerator::getLinearAcceleration()
 {
-    double ddx = 2 * 3 * pow(t, 1) / pow(MAX_TIME, 3) * MAX_BOX;
-    double ddy = MAX_BOX / 2.0 * -cos(t / MAX_TIME * PI * 2 * 2) * (1.0 / MAX_TIME * PI * 2 * 2) * (1.0 / MAX_TIME * PI * 2 * 2);
-    double ddz = MAX_BOX / 2.0 * -cos(t / MAX_TIME * PI * 2) * (1.0 / MAX_TIME * PI * 2) * (1.0 / MAX_TIME * PI * 2);
-#if WITH_NOISE
+    //double ddx = 2 * 3 * pow(t, 1) / pow(MAX_TIME, 3) * MAX_BOX;
+    //double ddy = MAX_BOX / 2.0 * -cos(t / MAX_TIME * PI * 2 * 2) * (1.0 / MAX_TIME * PI * 2 * 2) * (1.0 / MAX_TIME * PI * 2 * 2);
+    //double ddz = MAX_BOX / 2.0 * -cos(t / MAX_TIME * PI * 2) * (1.0 / MAX_TIME * PI * 2) * (1.0 / MAX_TIME * PI * 2);
+    double ddx = -0.1*cos(t/10);
+    double ddy = -0.1*sin(t/10);
+    double ddz = 0;
+#ifdef WITH_NOISE
     Vector3d disturb = Vector3d(distribution(generator) * sqrt(acc_cov(0, 0)),
                                 distribution(generator) * sqrt(acc_cov(1, 1)),
                                 distribution(generator) * sqrt(acc_cov(2, 2))
                                );
-    return getRotation().inverse() * (disturb + Vector3d(ddx, ddy, ddz - 9.8));
+    return getRotation().inverse() * (disturb + Vector3d(ddx, ddy, ddz + 9.8));
 #else
-    return getRotation().inverse() * Vector3d(ddx, ddy, ddz - 9.8);
+    return getRotation().inverse() * Vector3d(ddx, ddy, ddz + 9.8);
 #endif
 }
 
@@ -128,7 +135,7 @@ vector<pair<int, Vector3d>> DataGenerator::getImage()
 {
     vector<pair<int, Vector3d>> image;
     Vector3d position = getPosition();
-    Matrix3d quat = getRotation();
+    Matrix3d quat = getRotation();           //R_gb
     printf("max: %d\n", current_id);
     for (int i = 0; i < NUM_POINTS; i++)
     {

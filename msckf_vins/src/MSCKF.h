@@ -28,72 +28,72 @@ using namespace std;
 
 struct SlideState
 {
-    Vector4f q;
-    Vector3f p;
-    Vector3f v;
+    Vector4d q;
+    Vector3d p;
+    Vector3d v;
 };
 
 class MSCKF
 {
 private:
     /* states */
-//    VectorXf nominalState;  // dimension 4 + 3 + 3 + 3 + 3 = 16
-//    VectorXf errorState;    // dimension 3 + 3 + 3 + 3 + 3 = 15
-//    VectorXf extrinsicP;    // p_bc, dimension 3
+//    VectorXd nominalState;  // dimension 4 + 3 + 3 + 3 + 3 = 16
+//    VectorXd errorState;    // dimension 3 + 3 + 3 + 3 + 3 = 15
+//    VectorXd extrinsicP;    // p_bc, dimension 3
     
-    VectorXf fullNominalState;
-//    VectorXf fullErrorState;
+    VectorXd fullNominalState;
+//    VectorXd fullErrorState;
     
     list<SlideState> slidingWindow;
 
     /* covariance */
-    MatrixXf errorCovariance;
-    MatrixXf fullErrorCovariance;
-    MatrixXf phi;
+    MatrixXd errorCovariance;
+    MatrixXd fullErrorCovariance;
+    MatrixXd phi;
     
     /* noise matrix */
-    MatrixXf Nc;
-    float measure_noise;
+    MatrixXd Nc;
+    double measure_noise;
     
     /* feature management */
     map<int, FeatureRecord> feature_record_dict;
-    list<VectorXf>  residual_list;
-    list<MatrixXf>  H_mtx_list;
+    list<VectorXd>  residual_list;
+    list<MatrixXd>  H_mtx_list;
     list<int>       H_mtx_block_size_list;
     
     
-    float current_time;     // indicates the current time stamp
+    double current_time;     // indicates the current time stamp
     int   current_frame;    // indicates the current frame in slidingWindow
     
     /* IMU measurements */
-    Vector3f prev_w, curr_w;
-    Vector3f prev_a, curr_a;
+    Vector3d prev_w, curr_w;
+    Vector3d prev_a, curr_a;
     
     /* nominal state variables used only for calculation */
-    Vector4f spatial_quaternion; // q_gb
-    Matrix3f spatial_rotation; // R_gb
-    Vector3f spatial_position;
-    Vector3f spatial_velocity;
-    Vector3f gyro_bias;
-    Vector3f acce_bias;
+    Vector4d spatial_quaternion; // q_gb
+    Matrix3d spatial_rotation; // R_gb
+    Vector3d spatial_position;
+    Vector3d spatial_velocity;
+    Vector3d gyro_bias;
+    Vector3d acce_bias;
     
     /* camera */    
     DistortCamera cam;
     
     /* fixed rotation between camera and the body frame */
-    Matrix3f R_cb;
+    Matrix3d R_cb;
     
 
     
-    void correctNominalState(VectorXf delta);
+    void correctNominalState(VectorXd delta);
     void addSlideState();
     void removeSlideState(int index, int total);
     void addFeatures(const vector<pair<int, Vector3d>> &image);
     void removeFrameFeatures(int index);
     void removeUsedFeatures();
     
-    Vector2f projectPoint(Vector3f feature_pose, Matrix3f R_bg, Vector3f p_gb, Vector3f p_cb);
-    void getResidualH(VectorXf& ri, MatrixXf& Hi, Vector3f feature_pose, MatrixXf measure, MatrixXf pose_mtx, int frame_offset);
+    Vector2d projectPoint(Vector3d feature_pose, Matrix3d R_bg, Vector3d p_gb, Vector3d p_cb);
+    void getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, MatrixXd measure, MatrixXd pose_mtx, int frame_offset);
     
 public:
     MSCKF();
@@ -101,25 +101,25 @@ public:
     
     void resetError();
     
-    void processIMU(float t, Vector3f linear_acceleration, Vector3f angular_velocity);
+    void processIMU(double t, Vector3d linear_acceleration, Vector3d angular_velocity);
     void processImage(const vector<pair<int, Vector3d>> &image);
     
-    void setNominalState(Vector4f q, Vector3f p, Vector3f v, Vector3f bg, Vector3f ba);
-    void setCalibParam(Vector3f p_cb, float fx, float fy, float ox, float oy, float k1, float k2, float p1, float p2, float k3);
-    void setIMUCameraRotation(Matrix3f _R_cb);
+    void setNominalState(Vector4d q, Vector3d p, Vector3d v, Vector3d bg, Vector3d ba);
+    void setCalibParam(Vector3d p_cb, double fx, double fy, double ox, double oy, double k1, double k2, double p1, double p2, double k3);
+    void setIMUCameraRotation(Matrix3d _R_cb);
     
-    void setNoiseMatrix(float dgc, float dac, float dwgc, float dwac);
-    void setMeasureNoise(float _noise);
+    void setNoiseMatrix(double dgc, double dac, double dwgc, double dwac);
+    void setMeasureNoise(double _noise);
     
 
     /* outputs */
-    Vector4f getQuaternion();
-    Matrix3f getRotation();
-    Vector3f getPosition();
-    Vector3f getVelocity();
-    Vector3f getGyroBias();
-    Vector3f getAcceBias();
-    Vector3f getVIOffset();
+    Vector4d getQuaternion();
+    Matrix3d getRotation();
+    Vector3d getPosition();
+    Vector3d getVelocity();
+    Vector3d getGyroBias();
+    Vector3d getAcceBias();
+    Vector3d getVIOffset();
     
     
     /* debug outputs */
