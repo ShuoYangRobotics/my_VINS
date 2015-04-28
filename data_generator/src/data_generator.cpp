@@ -18,7 +18,7 @@ DataGenerator::DataGenerator()
         -1, 0, 0,
         0, 1, 0;
     //Tic << 4, 5, 6;
-    Tic << 0.0, 0.5, 0.0;
+    Tic << 0.02, -0.14, 0.0;
     //acc_cov << 1.3967e-04, 1.4357e-06, 2.1468e-06,
     //        1.4357e-06, 1.4352e-04, 5.7168e-05,
     //        2.1468e-06, 5.7168e-05, 1.5757e-04;
@@ -76,8 +76,8 @@ Matrix3d DataGenerator::getRotation()
     //return (AngleAxisd(30.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitX())
     //        * AngleAxisd(40.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitY())
     //        * AngleAxisd(0, Vector3d::UnitZ())).toRotationMatrix();
-    return AngleAxisd(30.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitZ()).toRotationMatrix();
-    //return Matrix3d::Identity();
+    //return AngleAxisd(30.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitZ()).toRotationMatrix();
+    return Matrix3d::Identity();
 }
 
 Vector3d DataGenerator::getAngularVelocity()
@@ -148,7 +148,8 @@ vector<pair<int, Vector3d>> DataGenerator::getImage()
         zz = local_point(2);
 
         if (std::fabs(atan2(xx, zz)) <= PI * FOV / 2 / 180
-                && std::fabs(atan2(yy, zz)) <= PI * FOV / 2 / 180)
+                && std::fabs(atan2(yy, zz)) <= PI * FOV / 2 / 180
+                && zz > 0)
         {
             int n_id = before_feature_id.find(i) == before_feature_id.end() ?
                        current_id++ : before_feature_id[i];
@@ -160,6 +161,12 @@ vector<pair<int, Vector3d>> DataGenerator::getImage()
 //            image.push_back(make_pair(n_id, disturb + Vector3d(xx / zz, yy / zz, 1)));
 //#else
             image.push_back(make_pair(n_id, Vector3d(xx, yy, zz)));
+            printf ("id %d, (%d %d %d)\n", n_id,
+                pts[i * 3 + 0] ,
+                pts[i * 3 + 1] ,
+                pts[i * 3 + 2] 
+            );
+                            
 //#endif
             current_feature_id[i] = n_id;
         }

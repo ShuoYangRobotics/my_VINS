@@ -63,7 +63,7 @@ int main(int argc, char** argv)
     while (ros::ok())
     {
         double current_time = generator.getTime();
-        ROS_INFO("time: %lf", current_time);
+        //ROS_INFO("time: %lf", current_time);
 
         //get generated data
         Vector3d position     = generator.getPosition();
@@ -115,14 +115,14 @@ int main(int argc, char** argv)
         imu.orientation.w = q.w();
 
         pub_imu.publish(imu);
-        ROS_INFO("publish imu data with stamp %lf", imu.header.stamp.toSec());
+        //ROS_INFO("publish imu data with stamp %lf", imu.header.stamp.toSec());
 
         pub_cloud.publish(point_cloud);
         //publish image data
         if (publish_count % generator.IMU_PER_IMG == 0)
         {
             //publish image data
-            ROS_INFO("feature count: %lu", generator.getImage().size());
+            //ROS_INFO("feature count: %lu", generator.getImage().size());
 
             sensor_msgs::PointCloud feature;
             sensor_msgs::ChannelFloat32 ids;
@@ -153,7 +153,7 @@ int main(int argc, char** argv)
 
                 char label[10];
                 sprintf(label, "%d", id);
-                cv::putText(simu_img, label, cv::Point2d(p.x + 1, p.y + 1) * 0.5 * 600, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255));
+                cv::putText(simu_img, label, cv::Point2d(p.y + 1, p.x + 1) * 0.5 * 600, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255));
             }
             feature.channels.push_back(ids);
             feature.channels.push_back(pixel);

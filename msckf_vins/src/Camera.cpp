@@ -177,7 +177,8 @@ Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
 //    cout << "t_list is" << endl << t_list << endl;
     
     // init estimation
-    Vector3d theta = Vector3d(0.1f, 0.1f, 0.1f);
+    Vector3d theta = Vector3d(1.0f, 1.0f, 1.0f);
+
     Vector3d g_ptr = Vector3d(0.0f, 0.0f, 0.0f);
     VectorXd f = VectorXd::Zero(num_item*2);
     MatrixXd J = MatrixXd::Zero(num_item*2,3);

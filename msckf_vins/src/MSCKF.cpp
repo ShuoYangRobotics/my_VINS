@@ -9,7 +9,9 @@
 #include "MSCKF.h"
 #include "math_tool.h"
 #include "g_param.h"
+#include <ros/ros.h>
 
+using namespace ros;
 static Vector3d g(0.0f, 0.0f, -9.8f);
 
 MSCKF::MSCKF()
@@ -249,6 +251,7 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
 
 void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
 {
+    printNominalState(false);
     printf("input feature: %lu\n", image.size());
     
     // init is_lost
@@ -273,6 +276,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
     ++current_frame;
     printf("current frame is %d\n", current_frame);
     addFeatures(image);     // is_lost modified here
+
 
     //check is_lost to get measurement
     MatrixXd measure_mtx;
@@ -312,28 +316,33 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                     measure_mtx(1, i-item.second.start_frame) = itr_f->point.y();
                 
                     // construct pose
-//                    Matrix3d R_gb, R_gc;
-//                    Vector3d p_gb, p_gc;
-//                    R_gb = quaternion_to_R(itr_s->q);
-//                    p_gb = itr_s->p;
-//                    
-//                    R_gc = R_gb*R_cb.transpose();
-//                    
-//                    /* p_gc = p_gb + p_bc */
-//                    /* p_bc = -R_cb^T * p_cb */
-//                    p_gc = p_gb + -R_cb.transpose() * fullNominalState.segment(16, 3);
+                    Matrix3d R_gb, R_gc;
+                    Vector3d p_gb, p_gc;
+                    R_gb = quaternion_to_R(itr_s->q);
+                    p_gb = itr_s->p;
                     
-//                    pose_mtx.block<4,1>(0, i-item.second.start_frame) = R_to_quaternion(R_gc);  // q_gc
-//                    pose_mtx.block<3,1>(4, i-item.second.start_frame) = p_gc;                   // p_gc
-                    pose_mtx.block<4,1>(0, i-item.second.start_frame) = itr_s->q;  // q_gb
-                    pose_mtx.block<3,1>(4, i-item.second.start_frame) = itr_s->p;  // p_gb
+                    R_gc = R_gb*R_cb.transpose();
                     
+                    /* p_gc = p_gb + p_bc */
+                    /* p_bc = -R_cb^T * p_cb */
+                    p_gc = p_gb + -R_cb.transpose() * fullNominalState.segment(16, 3);
+                    
+                    pose_mtx.block<4,1>(0, i-item.second.start_frame) = R_to_quaternion(R_gc);  // q_gc
+                    pose_mtx.block<3,1>(4, i-item.second.start_frame) = p_gc;                   // p_gc
+//                    pose_mtx.block<4,1>(0, i-item.second.start_frame) = itr_s->q;  // q_gb
+//                    pose_mtx.block<3,1>(4, i-item.second.start_frame) = itr_s->p;  // p_gb
+                    
+                    //Quaterniond q;
+                    //q = Matrix3d::Identity()*R_cb.transpose();
+                    //cout << R_to_quaternion(R_gc).transpose() << endl;
+                    //cout << q.w() << " " << q.x() << " " << q.y() << " " << q.z() << " "  <<endl;
                     
                     itr_f++;
                     itr_s++;
                 }
                 
                 ptr_pose = cam.triangulate(measure_mtx, pose_mtx);
+                ROS_INFO("I triangulated a point with id %d (%lf, %lf, %lf)", item.first, ptr_pose(0), ptr_pose(1), ptr_pose(2));
                 // check ptr_pose validity (it cannot be strange value)
                 bool is_valid = true;
                 // TODO: can add more validity check (for example, the ptr_pose should be in front of the camera)
@@ -350,26 +359,30 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 /* 2. calculate r and H */
                 if (is_valid)
                 {
-                    num_measure++;
                     // construct H matrix use ptr_pose, item.second.start_frame and current_frame
                     VectorXd ri;
                     MatrixXd Hi;
-                    getResidualH(ri, Hi, ptr_pose, measure_mtx, pose_mtx, item.second.start_frame);
-                    row_H += (2 * num_frame - 3); // after feature error marginalization
-                    
-                    // TODO: outlier reject: Chi-square test
-                    
-                    residual_list.push_back(ri);
-                    H_mtx_list.push_back(Hi);
-                    H_mtx_block_size_list.push_back(2 * num_frame - 3);
-                    
+                    if (getResidualH(ri, Hi, ptr_pose, measure_mtx, pose_mtx, item.second.start_frame) == true)
+                    {
+                      num_measure++;
+                      row_H += (2 * num_frame - 3); // after feature error marginalization
+                      
+                      // TODO: outlier reject: Chi-square test
+                      
+                      residual_list.push_back(ri);
+                      H_mtx_list.push_back(Hi);
+                      H_mtx_block_size_list.push_back(2 * num_frame - 3);
+                    }
                     item.second.is_used = true;
+                    item.second.is_lost = false;
+                    
                 }
             }
             else
             {
                 // not enough number of frame, does not generate measure
                 item.second.is_used = true;
+                item.second.is_lost = false;
             }
         }
     }
@@ -380,6 +393,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
     }
     else
     {
+        ROS_INFO("I got %d measurements", num_measure);
         int col_H = (int)fullErrorCovariance.rows();;
         // use ri and Hi to do KF update
         /* 1. construct H matrix */
@@ -407,7 +421,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
 
         VectorXd delta_x;
         // when there are a lot of features, use QR of H to speed up computation
-        if (H.rows()>H.cols())
+        //if (H.rows()>H.cols())
+        if (0)
         {
             HouseholderQR<MatrixXd> qr(H.cast<double>());
             MatrixXd R = qr.matrixQR().triangularView<Upper>();
@@ -429,14 +444,22 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
         else
         {
             MatrixXd Rq = MatrixXd::Identity(row_H, row_H) * measure_noise*measure_noise;
+            //ROS_INFO("H matrix");
+            //cout << H << endl;
             MatrixXd tmpK = (H * fullErrorCovariance * H.transpose() + Rq).inverse();
             MatrixXd K = fullErrorCovariance * H.transpose() * tmpK;
+            //ROS_INFO("K matrix");
+            //cout << K << endl;
             MatrixXd ImKH = MatrixXd::Identity(col_H, col_H) - K * H;
             fullErrorCovariance = ImKH * fullErrorCovariance*ImKH.transpose() + K * Rq * K.transpose();
+            //ROS_INFO("r");
+            //cout << r.transpose() << endl;
             delta_x = K * r;
         }
         
         
+        ROS_INFO("A correction calculated");
+        cout << delta_x << endl;;
         correctNominalState(delta_x);
 
     }
@@ -661,7 +684,7 @@ void MSCKF::removeFrameFeatures(int index)
     }
 }
 
-Vector2d MSCKF::projectWorldPoint(Vector3d ptr)
+Vector2d MSCKF::projectCamPoint(Vector3d ptr)
 {
     return cam.h(ptr);
 }
@@ -677,7 +700,7 @@ Vector2d MSCKF::projectPoint(Vector3d feature_pose, Matrix3d R_gb, Vector3d p_gb
 /*
  *   frame_offset: used to place HxBj in right place in H
  */
-void MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, MatrixXd measure, MatrixXd pose_mtx, int frame_offset)
+bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, MatrixXd measure, MatrixXd pose_mtx, int frame_offset)
 {
     int num_frame = (int)pose_mtx.cols();
     int errorStateLength = (int)fullErrorCovariance.rows();
@@ -694,13 +717,29 @@ void MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
     
     for(int j = 0; j < num_frame; j++)
     {
-//        cout << "frame is " << frame_offset+j << endl;
+        cout << "frame is " << frame_offset+j << endl;
         Matrix3d R_gb = quaternion_to_R(pose_mtx.block<4, 1>(0, j));
+
+        //double xx = pts[i * 3 + 0] - position(0);
+        //double yy = pts[i * 3 + 1] - position(1);
+        //double zz = pts[i * 3 + 2] - position(2);
+        //Vector3d local_point = Ric.inverse() * (quat.inverse() * Vector3d(xx, yy, zz) - Tic);
         Vector3d feature_in_c = R_cb * R_gb.transpose() * (feature_pose - pose_mtx.block<3, 1>(4, j)) + fullNominalState.segment(16, 3);
-        Vector2d projPtr = projectPoint(feature_pose, R_gb, pose_mtx.block<3, 1>(4, j), fullNominalState.segment(16, 3));
-        
-//        cout << "measure is " << measure.col(j).transpose() << endl;
-//        cout << "estimat is " << projPtr << endl;
+        //Vector2d projPtr = projectPoint(feature_pose, R_gb, pose_mtx.block<3, 1>(4, j), fullNominalState.segment(16, 3));
+        Vector2d projPtr;
+        if (feature_in_c(2) < 1e-4)
+        {
+          projPtr = measure.col(j);
+          return false;
+        }
+        else
+        {
+          projPtr = projectCamPoint(feature_in_c);
+        }
+
+        cout << "measure is " << measure.col(j).transpose() << endl;
+        cout << "feature in c is " << feature_in_c.transpose() << endl;
+        cout << "estimat is " << projPtr << endl;
         ri.segment(j * 2, 2) = measure.col(j) - projPtr;
         
         Mij = cam.Jh(feature_in_c) * R_cb * R_gb.transpose();
@@ -710,8 +749,8 @@ void MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
         
         HxBj = Mij * tmp39;                           // 2x9
         Hc = cam.Jh(feature_in_c);   // 2x3
-//        cout << "HxBj is " << HxBj;
-//        cout << "Hc is " << Hc;
+        cout << "HxBj is " << HxBj << endl;
+        cout << "Hc is " << Hc << endl;
         
         Hi.block<2, 9>(j * 2, ERROR_STATE_SIZE + 3 + ERROR_POSE_STATE_SIZE * (frame_offset + j)) = HxBj;
         Hi.block<2, 3>(j * 2, ERROR_STATE_SIZE) = Hc;
@@ -742,6 +781,8 @@ void MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
 //    cout << Hi << endl;
 //    printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
 //    printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
+
+    return true;
 }
 
 

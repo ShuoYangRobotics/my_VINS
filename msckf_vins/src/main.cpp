@@ -96,8 +96,10 @@ void image_callback(const sensor_msgs::PointCloudConstPtr &image_msg)
         double y = image_msg->points[i].y;
         double z = image_msg->points[i].z;
         Vector3d world_ptr(x, y, z);
-        Vector2d cam_ptr = my_kf.projectWorldPoint(world_ptr);
-        image.push_back(make_pair(/*gr_id * 10000 + */id, Vector3d(cam_ptr(0), cam_ptr(1), 1)));
+        Vector2d cam_ptr = my_kf.projectCamPoint(world_ptr);
+        //ROS_INFO("id %d cam pos (%f, %f, %f) project to (%f, %f)", id, x, y, z, cam_ptr(0), cam_ptr(1));
+        if(cam_ptr(0) > 0 && cam_ptr(0) < COL && cam_ptr(1) > 0 && cam_ptr(1) < ROW) 
+          image.push_back(make_pair(/*gr_id * 10000 + */id, Vector3d(cam_ptr(0), cam_ptr(1), 1)));
     }
 
     my_kf.processImage(image);
@@ -217,7 +219,7 @@ int main(int argc, char **argv)
 
     // init MSCKF
     Vector4d init_q(1.0, 0.0, 0.0, 0.0);  // w x y z
-    Vector3d init_p(0.0, 0.0, 0.0);
+    Vector3d init_p(10.0, 0.0, 3.0);
     Vector3d init_v(0.0, 1.0, 0.0);
     Vector3d init_bg(0.0 ,0.0, 0.0);
     Vector3d init_ba(0.0 ,0.0, 0.0);

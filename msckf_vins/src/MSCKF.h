@@ -93,7 +93,7 @@ private:
     void removeUsedFeatures();
     
     Vector2d projectPoint(Vector3d feature_pose, Matrix3d R_bg, Vector3d p_gb, Vector3d p_cb);
-    void getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, MatrixXd measure, MatrixXd pose_mtx, int frame_offset);
+    bool getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, MatrixXd measure, MatrixXd pose_mtx, int frame_offset);
     
 public:
     MSCKF();
@@ -112,7 +112,7 @@ public:
     void setMeasureNoise(double _noise);
 
     // test function...
-    Vector2d projectWorldPoint(Vector3d ptr);    
+    Vector2d projectCamPoint(Vector3d ptr);    
 
     /* outputs */
     Vector4d getQuaternion();
