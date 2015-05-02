@@ -102,7 +102,7 @@ void image_callback(const sensor_msgs::PointCloudConstPtr &image_msg)
           image.push_back(make_pair(/*gr_id * 10000 + */id, Vector3d(cam_ptr(0), cam_ptr(1), 1)));
     }
 
-    my_kf.processImage(image);
+    //my_kf.processImage(image);
 
     sum_of_path += (my_kf.getPosition() - last_path).norm();
     last_path = my_kf.getPosition();

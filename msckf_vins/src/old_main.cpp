@@ -31,48 +31,48 @@ int main(int argc, char ** argv) {
   //ros::init(argc, argv, "msckf_vins");
   //ros::NodeHandle n;
   //ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
-  //test_March();
-  test_Apr();
+  test_March();
+  //test_Apr();
   return 0;
 }
 
 void test_Apr()
 {
     // do test here
-    MatrixXf U(3,2);
+    MatrixXd U(3,2);
     U << 0.388,   0.866,
     0.712, -0.0634,
     -0.586,   0.496;
-    Matrix2f S(2,2);
+    Matrix2d S(2,2);
     S << 1.19, 0,
     0, 0.899;
-    Matrix2f V(2,2);
+    Matrix2d V(2,2);
     V<< -0.183,  0.983,
     0.983 , 0.183;
     cout << U*S*V.transpose()<<endl;
     
     
     
-    Vector4f q(1.0f, 0.0f, 0.0f, 0.0f);
-    Vector3f p(3.0f, 3.0f, 4.5f);
-    Vector3f v(1.3f, 1.4f, 1.5f);
-    Vector3f bg(0.0f ,0.0f, 0.0f);
-    Vector3f ba(0.0f ,0.0f, 0.0f);
-    Vector3f pcb(0.0f ,0.0f, 0.0f);
+    Vector4d q(1.0f, 0.0f, 0.0f, 0.0f);
+    Vector3d p(3.0f, 3.0f, 4.5f);
+    Vector3d v(1.3f, 1.4f, 1.5f);
+    Vector3d bg(0.0f ,0.0f, 0.0f);
+    Vector3d ba(0.0f ,0.0f, 0.0f);
+    Vector3d pcb(0.0f ,0.0f, 0.0f);
     my_kf.setCalibParam(pcb, 365.07984, 365.12127, 381.0196, 254.4431,
                             -2.842958e-1, 8.7155025e-2, -1.4602925e-4, -6.149638e-4, -1.218237e-2);
     my_kf.setNominalState(q, p, v, bg, ba);
     my_kf.printNominalState(true);
 
     my_kf.resetError();
-    my_kf.processIMU(1.0f, Vector3f(0.9f, 0.9f, 0.9f), Vector3f(0.5f, 0.0f, 0.0f));
-    my_kf.processIMU(1.4f, Vector3f(0.9f, 0.9f, 0.9f), Vector3f(0.5f, 0.0f, 0.0f));
+    my_kf.processIMU(1.0f, Vector3d(0.9f, 0.9f, 0.9f), Vector3d(0.5f, 0.0f, 0.0f));
+    my_kf.processIMU(1.4f, Vector3d(0.9f, 0.9f, 0.9f), Vector3d(0.5f, 0.0f, 0.0f));
     my_kf.resetError();
 
     // simulate a feature 
-    vector<pair<int, Vector3f>> image;
-    MatrixXf measure(2,5);
-    MatrixXf pose(7,5);
+    vector<pair<int, Vector3d>> image;
+    MatrixXd measure(2,5);
+    MatrixXd pose(7,5);
     measure <<
     497.6229,  493.1491,  489.0450,  478.8504,  466.8726,
     371.0596,  366.5853,  362.4808,  352.2850,  340.3059
@@ -88,33 +88,33 @@ void test_Apr()
     ;
     image.clear();
     //0
-    image.push_back(std::make_pair(5, Vector3f(measure(0,0), measure(1,0), 1)));
+    image.push_back(std::make_pair(5, Vector3d(measure(0,0), measure(1,0), 1)));
     my_kf.setNominalState(pose.block<4,1>(0,0), pose.block<3,1>(4,0), 
-      Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
+      Vector3d(0.0f, 0.0f, 0.0f), Vector3d(0.0f, 0.0f, 0.0f), Vector3d(0.0f, 0.0f, 0.0f));
     my_kf.processImage(image);
     image.clear();
     //1
-    image.push_back(std::make_pair(5, Vector3f(measure(0,1), measure(1,1), 1)));
+    image.push_back(std::make_pair(5, Vector3d(measure(0,1), measure(1,1), 1)));
     my_kf.setNominalState(pose.block<4,1>(0,1), pose.block<3,1>(4,1), 
-      Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
+      Vector3d(0.0f, 0.0f, 0.0f), Vector3d(0.0f, 0.0f, 0.0f), Vector3d(0.0f, 0.0f, 0.0f));
     my_kf.processImage(image);
     image.clear();
     //2
-    image.push_back(std::make_pair(5, Vector3f(measure(0,2), measure(1,2), 1)));
+    image.push_back(std::make_pair(5, Vector3d(measure(0,2), measure(1,2), 1)));
     my_kf.setNominalState(pose.block<4,1>(0,2), pose.block<3,1>(4,2), 
-      Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
+      Vector3d(0.0f, 0.0f, 0.0f), Vector3d(0.0f, 0.0f, 0.0f), Vector3d(0.0f, 0.0f, 0.0f));
     my_kf.processImage(image);
     image.clear();
     //3
-    image.push_back(std::make_pair(5, Vector3f(measure(0,3), measure(1,3), 1)));
+    image.push_back(std::make_pair(5, Vector3d(measure(0,3), measure(1,3), 1)));
     my_kf.setNominalState(pose.block<4,1>(0,3), pose.block<3,1>(4,3), 
-      Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
+      Vector3d(0.0f, 0.0f, 0.0f), Vector3d(0.0f, 0.0f, 0.0f), Vector3d(0.0f, 0.0f, 0.0f));
     my_kf.processImage(image);
     image.clear();
     //4
-    image.push_back(std::make_pair(5, Vector3f(measure(0,4), measure(1,4), 1)));
+    image.push_back(std::make_pair(5, Vector3d(measure(0,4), measure(1,4), 1)));
     my_kf.setNominalState(pose.block<4,1>(0,4), pose.block<3,1>(4,4), 
-      Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f), Vector3f(0.0f, 0.0f, 0.0f));
+      Vector3d(0.0f, 0.0f, 0.0f), Vector3d(0.0f, 0.0f, 0.0f), Vector3d(0.0f, 0.0f, 0.0f));
     my_kf.processImage(image);
     image.clear();
 
@@ -139,36 +139,36 @@ void test_March() {
                            -6.149638e-4,
                            -1.218237e-2);
     
-    Vector3f ptr;
+    Vector3d ptr;
     ptr << 3.5f, 3.35f, 6.0f;
-    Vector2f z = cam.h(ptr);
-    MatrixXf Jacob_h = cam.Jh(ptr);
+    Vector2d z = cam.h(ptr);
+    MatrixXd Jacob_h = cam.Jh(ptr);
     
     std::cout << "projected point is " << z << std::endl;
     std::cout << "Jacobian matrix is " << std::endl << Jacob_h << std::endl;
     
     std::cout << "Jacobian matrix has cols " << Jacob_h.cols() << std::endl;
     
-    Vector4f q;
-    Matrix3f R;
+    Vector4d q;
+    Matrix3d R;
     q << 1, 2, 3, 4;
     q = q/q.norm();
     
     R = quaternion_to_R(q);
     
-    q = Vector4f(1,0,0,0);
+    q = Vector4d(1,0,0,0);
     
     std::cout << "q is " << q << std::endl;
     std::cout << "R is " << R << std::endl;
     
-    Matrix4f omega;
+    Matrix4d omega;
     omega = omega_mtx(ptr);
     
     std::cout << "omega is " << omega << std::endl;
     
     
-    MatrixXf measure(2,5);
-    MatrixXf pose(7,5);
+    MatrixXd measure(2,5);
+    MatrixXd pose(7,5);
     measure <<
     497.6229,  493.1491,  489.0450,  478.8504,  466.8726,
     371.0596,  366.5853,  362.4808,  352.2850,  340.3059
@@ -187,7 +187,7 @@ void test_March() {
     std::cout << "measure is " << std::endl << measure << std::endl;
     std::cout << "pose is " << std::endl<< pose << std::endl;
     
-    Vector3f ptr_pose = cam.triangulate(measure, pose);
+    Vector3d ptr_pose = cam.triangulate(measure, pose);
     std::cout << "ptr_pose is " << std::endl<< ptr_pose << std::endl;
     
     
@@ -201,9 +201,9 @@ void test_March() {
     q2 = (q2*dq).normalized();
     std::cout << "q2 is " << std::endl<< q2.w() << q2.x() << q2.y() << q2.z() << std::endl;
     
-    Vector3f w_prev(1.4,1.4,1.4);
-    Vector3f w_curr(1.4,1.4,1.4);
-    Vector4f dq2 = delta_quaternion(w_prev, w_curr, 1.0f);
+    Vector3d w_prev(1.4,1.4,1.4);
+    Vector3d w_curr(1.4,1.4,1.4);
+    Vector4d dq2 = delta_quaternion(w_prev, w_curr, 1.0f);
     dq.w() = dq2(3);
     dq.x() = -dq2(0);
     dq.y() = -dq2(1);
@@ -211,7 +211,7 @@ void test_March() {
     q3 = (q3 * dq).normalized();
     std::cout << "q3 is " << std::endl<< q3.w() << q3.x() << q3.y() << q3.z() << std::endl;
     
-    //Matrix3f ff = q3.vec();
+    //Matrix3d ff = q3.vec();
     std::map<int,std::string> mymap;
     mymap[100]="an element";
     mymap[200]="another element";
@@ -241,25 +241,25 @@ void test_March() {
 //    std::cout << RR << "\n";
 //    std::cout << Q << "\n";
 //    MatrixXd D = Q*RR-A;
-        MatrixXf A = pose;
-        HouseholderQR<MatrixXf> qr(A);
-        MatrixXf RR = qr.matrixQR().triangularView<Upper>();
-        MatrixXf Q = qr.householderQ();
+        MatrixXd A = pose;
+        HouseholderQR<MatrixXd> qr(A);
+        MatrixXd RR = qr.matrixQR().triangularView<Upper>();
+        MatrixXd Q = qr.householderQ();
         std::cout << RR << "\n";
         std::cout << Q << "\n";
-        MatrixXf D = Q*RR-A;
+        MatrixXd D = Q*RR-A;
 
     std::cout << "\n" << (Q*RR-A).norm() << "  " << sqrt((D.adjoint()*D).trace()) << "\n";
 }
 
 void KFtest()
 {
-    Vector4f q(1.0f, 0.0f, 0.0f, 0.0f);
-    Vector3f p(3.0f, 3.0f, 4.5f);
-    Vector3f v(1.3f, 1.4f, 1.5f);
-    Vector3f bg(0.0f ,0.0f, 0.0f);
-    Vector3f ba(0.0f ,0.0f, 0.0f);
-    Vector3f pcb(10.0f ,0.0f, 0.0f);
+    Vector4d q(1.0f, 0.0f, 0.0f, 0.0f);
+    Vector3d p(3.0f, 3.0f, 4.5f);
+    Vector3d v(1.3f, 1.4f, 1.5f);
+    Vector3d bg(0.0f ,0.0f, 0.0f);
+    Vector3d ba(0.0f ,0.0f, 0.0f);
+    Vector3d pcb(10.0f ,0.0f, 0.0f);
     my_kf.setCalibParam(pcb, 365.07984, 365.12127, 381.0196, 254.4431,
                             -2.842958e-1, 8.7155025e-2, -1.4602925e-4, -6.149638e-4, -1.218237e-2);
     my_kf.setNominalState(q, p, v, bg, ba);
@@ -270,7 +270,7 @@ void KFtest()
     my_kf.printErrorCovariance(true);
     my_kf.printSlidingWindow();
     
-    v = Vector3f(1.9f, 2.0f, 2.1f);
+    v = Vector3d(1.9f, 2.0f, 2.1f);
     my_kf.setNominalState(q, p, v, bg, ba);
     
     my_kf.printNominalState(true);
@@ -288,17 +288,17 @@ void KFtest()
 //    my_kf.removeSlideState(0, 1);
     
     my_kf.printErrorCovariance(true);
-    my_kf.processIMU(1.0f, Vector3f(0.9f, 0.9f, 0.9f), Vector3f(0.5f, 0.0f, 0.0f));
-    my_kf.processIMU(1.4f, Vector3f(0.9f, 0.9f, 0.9f), Vector3f(0.5f, 0.0f, 0.0f));
+    my_kf.processIMU(1.0f, Vector3d(0.9f, 0.9f, 0.9f), Vector3d(0.5f, 0.0f, 0.0f));
+    my_kf.processIMU(1.4f, Vector3d(0.9f, 0.9f, 0.9f), Vector3d(0.5f, 0.0f, 0.0f));
     my_kf.printErrorCovariance(true);
 }
 
 void foo()
 {
     SlideState state;
-    Vector4f q(1.0f, 0.5f, 0.5f, 0.5f);
-    Vector3f p(3.0f, 3.0f, 4.5f);
-    Vector3f v(1.3f, 1.4f, 1.5f);
+    Vector4d q(1.0f, 0.5f, 0.5f, 0.5f);
+    Vector3d p(3.0f, 3.0f, 4.5f);
+    Vector3d v(1.3f, 1.4f, 1.5f);
     state.p = p;
     state.q = q;
     state.v = v;

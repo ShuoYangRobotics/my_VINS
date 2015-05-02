@@ -736,6 +736,8 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
         {
           projPtr = projectCamPoint(feature_in_c);
         }
+        if (projPtr(0)<0 || projPtr(1)>800 || projPtr(1)<0||projPtr(1)>800)
+          return false;
 
         cout << "measure is " << measure.col(j).transpose() << endl;
         cout << "feature in c is " << feature_in_c.transpose() << endl;

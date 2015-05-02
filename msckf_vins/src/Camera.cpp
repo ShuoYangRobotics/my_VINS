@@ -141,6 +141,8 @@ MatrixXd DistortCamera::Jh(Vector3d ptr)
 // measure is 2f
 Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
 {
+    std::cout << "measure is " << std::endl << measure << std::endl;
+    std::cout << "pose is " << std::endl<< pose << std::endl;
     Vector3d return_pose = Vector3d(0.0f, 0.0f, 0.0f);
     int num_item = (int)pose.cols();
     
@@ -176,8 +178,38 @@ Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
 //    cout << "q_list is" << endl << q_list << endl;
 //    cout << "t_list is" << endl << t_list << endl;
     
-    // init estimation
-    Vector3d theta = Vector3d(1.0f, 1.0f, 1.0f);
+    // obtain init estimation
+    Vector2d mtx_A, mtx_B;
+    Vector3d ptr_i, ptr_j, ti, tj, guess;
+    MatrixXd nK = MatrixXd::Zero(2,3);
+    Matrix3d R_wbi, R_wbj;
+    double depth;
+
+    ptr_i(0) = (measure(0,0)-ox)/fx; 
+    ptr_i(1) = (measure(1,0)-oy)/fy; 
+    ptr_i(2) = 1;
+    ptr_j(0) = (measure(0,1)-ox)/fx; 
+    ptr_j(1) = (measure(1,1)-oy)/fy; 
+    ptr_j(2) = 1;
+
+    R_wbi = quaternion_to_R(pose.block<4,1>(0,0));
+    R_wbj = quaternion_to_R(pose.block<4,1>(0,1));
+    ti = pose.block<3,1>(4,0);
+    tj = pose.block<3,1>(4,1);
+
+    nK(0,0) = 1; nK(1,1) = 1;
+    nK(0,2) = - ptr_i(0);
+    nK(1,2) = - ptr_i(1);
+
+    mtx_A = nK*R_wbi.transpose()*R_wbj*ptr_j;
+    mtx_B = nK*R_wbi.transpose()*(ti - tj);
+    
+    depth = (mtx_B(0)*mtx_A(0)+mtx_B(1)*mtx_A(1))/(mtx_A(0)*mtx_A(0)+mtx_A(1)*mtx_A(1));
+    guess = R_wbi.transpose()*R_wbj*depth*ptr_j;
+
+    
+    //Vector3d theta = Vector3d(1.0f, 1.0f, 1.0f);
+    Vector3d theta = Vector3d(guess(0)/guess(2), guess(1)/guess(2), 1.0/guess(2));
 
     Vector3d g_ptr = Vector3d(0.0f, 0.0f, 0.0f);
     VectorXd f = VectorXd::Zero(num_item*2);
@@ -186,7 +218,7 @@ Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
     MatrixXd Ji;
     MatrixXd A;
     MatrixXd b;
-    for (int itr = 0; itr < 100; itr++)
+    for (int itr = 0; itr < 1000; itr++)
     {
         Vector3d tmp_theta = Vector3d(theta(0), theta(1), 1);
         for (int i = 0; i < num_item; i++)
@@ -204,7 +236,7 @@ Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
             J.block<2,3>(i*2,0) = Ji;
         }
         
-        if (f.norm() < 5.0f)
+        if (f.norm() < 1.0f)
         {
             break;
         }
