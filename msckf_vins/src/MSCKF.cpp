@@ -137,15 +137,9 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
     gyro_bias = fullNominalState.segment(10, 3);
     acce_bias = fullNominalState.segment(13, 3);
     
-    Quaterniond spa(
-      spatial_quaternion(0),
-      spatial_quaternion(1),
-      spatial_quaternion(2),
-      spatial_quaternion(3)
-    );
+    Quaterniond spa(spatial_quaternion);
   
-    spatial_rotation = spa;
-    //spatial_rotation = quaternion_to_R(spatial_quaternion); //R_gb
+    spatial_rotation = spa.matrix();
     if (current_time < 0.0f)
     {
         current_time = t;
@@ -163,23 +157,17 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
 
     
     //calculate q_B{l+1}B{l}
-    small_rotation = delta_quaternion(prev_w, curr_w, dt);
-    d_R = quaternion_to_R(small_rotation);
+    d_R = delta_quaternion(prev_w, curr_w, dt).matrix();
     // defined in paper P.49
-    //s_hat = 0.5f * dt * (d_R.transpose() * curr_a + prev_a);
-    s_hat = dt *curr_a;
+    s_hat = 0.5f * dt * (d_R.transpose() * curr_a + prev_a);
+    //s_hat = dt *curr_a;
     y_hat = 0.5f * dt * s_hat;
     
     /* update nominal state */
     prev_R = spatial_rotation;
 
-    Quaterniond dq(1,
-                   curr_w(0) * dt / 2,
-                   curr_w(1) * dt / 2,
-                   curr_w(2) * dt / 2);
-    dq.w() = 1 - dq.vec().transpose() * dq.vec();
-    Quaterniond q(spatial_rotation);
-    spatial_rotation = (q * dq).normalized();
+    spatial_quaternion = quaternion_correct(spatial_quaternion, curr_w * dt);
+    spatial_rotation = quaternion_to_R(spatial_quaternion);
 
     //spatial_position += spatial_velocity * dt + spatial_rotation * curr_a * dt * dt / 2;
     //spatial_velocity += spatial_rotation * curr_a * dt + g * dt;
@@ -203,12 +191,7 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
     //spatial_rotation = spatial_rotation*d_R.transpose(); //R_gb{l+1} = R_gb{l}*q_B{l}B{l+1}
     
     //cout << R_to_quaternion(spatial_rotation) << endl;
-    spa = spatial_rotation;
-    spatial_quaternion(0) = spa.w();
-    spatial_quaternion(1) = spa.x();
-    spatial_quaternion(2) = spa.y();
-    spatial_quaternion(3) = spa.z();
-    //fullNominalState.segment(0, 4) = R_to_quaternion(spatial_rotation); //q_gb
+
     fullNominalState.segment(0, 4) = spatial_quaternion; //q_gb
     fullNominalState.segment(4, 3) = spatial_position;
     fullNominalState.segment(7, 3) = spatial_velocity;
@@ -218,7 +201,7 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
     prev_a = curr_a;
     
     /* propogate error covariance */
-    average_R = prev_R+spatial_rotation;
+    average_R = prev_R + spatial_rotation;
     phi = MatrixXd::Identity(ERROR_STATE_SIZE,ERROR_STATE_SIZE);
     //1. phi_pq
     phi.block<3,3>(3,0) = -skew_mtx(prev_R * y_hat);
@@ -281,6 +264,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
     //check is_lost to get measurement
     MatrixXd measure_mtx;
     MatrixXd pose_mtx;
+    MatrixXd pose_mtx_for_tri;
     Vector3d ptr_pose;
     
     // clear these two lists
@@ -296,6 +280,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
         {
             if (current_frame - item.second.start_frame >= 3)
             {
+                printf("===feature===\nfeature id: %d\n", item.first);
+
                 /* 1. prepare to do triangulation */
                 std::vector<FeatureInformation>::iterator itr_f = item.second.feature_points.begin();
                 std::list<SlideState>::iterator           itr_s = slidingWindow.begin();
@@ -303,18 +289,20 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 {
                     itr_s ++;
                 }
-                
+                    
                 int num_frame = current_frame - item.second.start_frame;
                 
                 measure_mtx = MatrixXd::Zero(2, num_frame);
                 pose_mtx = MatrixXd::Zero(7, num_frame);
+                pose_mtx_for_tri = MatrixXd::Zero(7, num_frame);
                 
+                ptr_pose = global_features[item.first];
+
                 for (int i = item.second.start_frame; i < current_frame; i++)
                 {
                     // construct measure
-                    measure_mtx(0, i-item.second.start_frame) = itr_f->point.x();
-                    measure_mtx(1, i-item.second.start_frame) = itr_f->point.y();
-                
+                    measure_mtx.block<2,1>(0, i-item.second.start_frame) = projectCamPoint(itr_f->point);
+                    
                     // construct pose
                     Matrix3d R_gb, R_gc;
                     Vector3d p_gb, p_gc;
@@ -326,11 +314,34 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                     /* p_gc = p_gb + p_bc */
                     /* p_bc = -R_cb^T * p_cb */
                     p_gc = p_gb + -R_cb.transpose() * fullNominalState.segment(16, 3);
+
+                    printf("frame time: %f , q_gc: %f, %f, %f, %f, p_gc: %f, %f, %f\nq_gb: %f, %f, %f, %f, p_gb: %f, %f, %f\n", 
+                        (i - current_frame) *0.5, 
+                        R_to_quaternion(R_gc)(0), R_to_quaternion(R_gc)(1), R_to_quaternion(R_gc)(2), R_to_quaternion(R_gc)(3),
+                        p_gc(0), p_gc(1), p_gc(2), 
+                        itr_s->q.x(), itr_s->q.y(), itr_s->q.z(), itr_s->q.w(), 
+                        itr_s->p(0), itr_s->p(1), itr_s->p(2));
+
+                    printf("    p_cf: %f, %f, %f, z_cf: %f, %f\n", itr_f->point(0), itr_f->point(1), itr_f->point(2), 
+                        measure_mtx(0, i-item.second.start_frame), measure_mtx(1, i-item.second.start_frame) );
+
+                   
+                    Vector3d p_cf =  R_gc.transpose() * (ptr_pose - p_gc);
+
+
+                    printf("    q_cg: %f, %f, %f, %f, p_gc: %f, %f, %f\n", 
+                        R_to_quaternion(R_gc.transpose())(0), R_to_quaternion(R_gc.transpose())(1), R_to_quaternion(R_gc.transpose())(2), R_to_quaternion(R_gc.transpose())(3), 
+                        (-R_gc.transpose() * p_gc)(0), (-R_gc.transpose() * p_gc)(1), (-R_gc.transpose() * p_gc)(2));
+
+                    printf("    p_gf: %f, %f, %f, p_cf(from ptr_pose): %f, %f, %f\n", 
+                        ptr_pose(0), ptr_pose(1), ptr_pose(2), 
+                        p_cf(0), p_cf(1), p_cf(2));
                     
-                    pose_mtx.block<4,1>(0, i-item.second.start_frame) = R_to_quaternion(R_gc);  // q_gc
-                    pose_mtx.block<3,1>(4, i-item.second.start_frame) = p_gc;                   // p_gc
-//                    pose_mtx.block<4,1>(0, i-item.second.start_frame) = itr_s->q;  // q_gb
-//                    pose_mtx.block<3,1>(4, i-item.second.start_frame) = itr_s->p;  // p_gb
+                    
+                    pose_mtx_for_tri.block<4,1>(0, i-item.second.start_frame) = R_to_quaternion(R_gc);  // q_gc
+                    pose_mtx_for_tri.block<3,1>(4, i-item.second.start_frame) = p_gc;                   // p_gc
+                    pose_mtx.block<4,1>(0, i-item.second.start_frame) = itr_s->q;  // q_gb
+                    pose_mtx.block<3,1>(4, i-item.second.start_frame) = itr_s->p;  // p_gb
                     
                     //Quaterniond q;
                     //q = Matrix3d::Identity()*R_cb.transpose();
@@ -341,8 +352,23 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                     itr_s++;
                 }
                 
-                ptr_pose = cam.triangulate(measure_mtx, pose_mtx);
+                ptr_pose = cam.triangulate(measure_mtx, pose_mtx_for_tri);
                 ROS_INFO("I triangulated a point with id %d (%lf, %lf, %lf)", item.first, ptr_pose(0), ptr_pose(1), ptr_pose(2));
+                
+                {
+
+
+                ROS_INFO("getResidualH global_features" );
+
+                getResidualH(ri, Hi, global_features[item.first], measure_mtx, pose_mtx, item.second.start_frame);
+                cout << "ri is" << ri << endl;
+                cout << "Hi is"  << Hi << endl;
+
+                }
+
+                //set to true position
+                ptr_pose = global_features[item.first];
+
                 // check ptr_pose validity (it cannot be strange value)
                 bool is_valid = true;
                 // TODO: can add more validity check (for example, the ptr_pose should be in front of the camera)
@@ -660,7 +686,7 @@ void MSCKF::removeFrameFeatures(int index)
         if (item.second.start_frame < index)
         {
             item.second.feature_points.erase(
-                item.second.feature_points.begin() + (index - item.second.start_frame)
+                item.second.feature_points.begin(), item.second.feature_points.begin() + (index - item.second.start_frame)
             );
         }
         else if (item.second.start_frame == index)
@@ -725,8 +751,10 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
         //double zz = pts[i * 3 + 2] - position(2);
         //Vector3d local_point = Ric.inverse() * (quat.inverse() * Vector3d(xx, yy, zz) - Tic);
         Vector3d feature_in_c = R_cb * R_gb.transpose() * (feature_pose - pose_mtx.block<3, 1>(4, j)) + fullNominalState.segment(16, 3);
-        //Vector2d projPtr = projectPoint(feature_pose, R_gb, pose_mtx.block<3, 1>(4, j), fullNominalState.segment(16, 3));
-        Vector2d projPtr;
+        Vector2d projPtr = projectPoint(feature_pose, R_gb, pose_mtx.block<3, 1>(4, j), fullNominalState.segment(16, 3));
+        //Vector2d projPtr;
+        cout << "projPtr projectPoint" << projPtr.transpose() << endl;
+
         if (feature_in_c(2) < 1e-4)
         {
           projPtr = measure.col(j);
@@ -738,6 +766,7 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
         }
         if (projPtr(0)<0 || projPtr(1)>800 || projPtr(1)<0||projPtr(1)>800)
           return false;
+        cout << "projPtr" << projPtr.transpose() << endl;
 
         cout << "measure is " << measure.col(j).transpose() << endl;
         cout << "feature in c is " << feature_in_c.transpose() << endl;
@@ -853,15 +882,14 @@ void MSCKF::printErrorCovariance(bool is_full)
     }
 }
 
-Vector4d MSCKF::getQuaternion()
+Quaterniond MSCKF::getQuaternion()
 {
-    return fullNominalState.head(4);
+    return Quaterniond(Vector4d(fullNominalState.segment(0, 4)));
 }
 
 Matrix3d MSCKF::getRotation()
 {
-    Vector4d q = fullNominalState.head(4);
-    return quaternion_to_R(q);
+    return getQuaternion().matrix();
 }
 
 Vector3d MSCKF::getPosition()

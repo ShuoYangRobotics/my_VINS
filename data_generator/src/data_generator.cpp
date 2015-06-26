@@ -9,16 +9,18 @@ DataGenerator::DataGenerator()
     current_id = 0;
     for (int i = 0; i < NUM_POINTS; i++)
     {
-        pts[i * 3 + 0] = rand() % (6 * MAX_BOX) - 3 * MAX_BOX;
-        pts[i * 3 + 1] = rand() % (6 * MAX_BOX) - 3 * MAX_BOX;
-        pts[i * 3 + 2] = rand() % (6 * MAX_BOX) - 3 * MAX_BOX;
+        pts[i] = Vector3d(
+            rand() % (6 * MAX_BOX) - 3 * MAX_BOX,
+            rand() % (6 * MAX_BOX) - 3 * MAX_BOX,
+            rand() % (6 * MAX_BOX) - 3 * MAX_BOX);
     }
-    Ric <<
+    R_bc <<
         0, 0, -1,
         -1, 0, 0,
         0, 1, 0;
     //Tic << 4, 5, 6;
-    Tic << 0.02, -0.14, 0.0;
+    p_bc << 0, -0.14, 0.02;
+
     //acc_cov << 1.3967e-04, 1.4357e-06, 2.1468e-06,
     //        1.4357e-06, 1.4352e-04, 5.7168e-05,
     //        2.1468e-06, 5.7168e-05, 1.5757e-04;
@@ -50,7 +52,7 @@ double DataGenerator::getTime()
 
 Vector3d DataGenerator::getPoint(int i)
 {
-    return Vector3d(pts[3 * i], pts[3 * i + 1], pts[3 * i + 2]);
+    return pts[i];
 }
 
 Vector3d DataGenerator::getPosition()
@@ -64,8 +66,8 @@ Vector3d DataGenerator::getPosition()
     //double x = pow(t, 3) / pow(MAX_TIME, 3) * MAX_BOX;
     //double y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * PI * 2 * 2);
     //double z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * PI * 2);
-    double x = 10*cos(t/10);
-    double y = 10*sin(t/10);
+    double x = 10 * cos(t/10);
+    double y = 10 * sin(t/10);
     double z = 3;
 
     return Vector3d(x, y, z);
@@ -130,29 +132,36 @@ Vector3d DataGenerator::getLinearAcceleration()
 #endif
 }
 
-
 vector<pair<int, Vector3d>> DataGenerator::getImage()
 {
     vector<pair<int, Vector3d>> image;
     Vector3d position = getPosition();
-    Matrix3d quat = getRotation();           //R_gb
+    Matrix3d R_gb = getRotation();           //R_gb
+    printf("===frame start===\n");
+
     printf("max: %d\n", current_id);
+
+    Vector4d q_cg = Quaterniond(R_bc.transpose() * R_gb.transpose()).coeffs();
+    Vector3d p_cg = R_bc.transpose() * (R_gb.transpose() * (-position) - p_bc);
+    printf("q_cg: %f, %f, %f, %f, p_cg: %f, %f, %f\n", q_cg(0), q_cg(1), q_cg(2), q_cg(3),
+        p_cg(0), p_cg(1), p_cg(2));  
+
     for (int i = 0; i < NUM_POINTS; i++)
     {
-        double xx = pts[i * 3 + 0] - position(0);
-        double yy = pts[i * 3 + 1] - position(1);
-        double zz = pts[i * 3 + 2] - position(2);
-        Vector3d local_point = Ric.inverse() * (quat.inverse() * Vector3d(xx, yy, zz) - Tic);
-        xx = local_point(0);
-        yy = local_point(1);
-        zz = local_point(2);
 
-        if (std::fabs(atan2(xx, zz)) <= PI * FOV / 2 / 180
-                && std::fabs(atan2(yy, zz)) <= PI * FOV / 2 / 180
+        Vector3d local_point = R_bc.transpose() * (R_gb.transpose() * (pts[i] - position) - p_bc);
+
+        double xx = local_point(0);
+        double yy = local_point(1);
+        double zz = local_point(2);
+
+        if (abs(atan2(xx, zz)) <= M_PI * FOV / 2 / 180
+                && abs(atan2(yy, zz)) <= M_PI * FOV / 2 / 180
                 && zz > 0)
         {
-            int n_id = before_feature_id.find(i) == before_feature_id.end() ?
-                       current_id++ : before_feature_id[i];
+            //int n_id = before_feature_id.find(i) == before_feature_id.end() ?
+            //           current_id++ : before_feature_id[i];
+            int n_id = i;
 //#if WITH_NOISE
 //            Vector3d disturb = Vector3d(distribution(generator) * sqrt(pts_cov(0, 0)) / zz / zz,
 //                                        distribution(generator) * sqrt(pts_cov(1, 1)) / zz / zz,
@@ -160,36 +169,32 @@ vector<pair<int, Vector3d>> DataGenerator::getImage()
 //                                       );
 //            image.push_back(make_pair(n_id, disturb + Vector3d(xx / zz, yy / zz, 1)));
 //#else
-            image.push_back(make_pair(n_id, Vector3d(xx, yy, zz)));
-            printf ("id %d, (%d %d %d)\n", n_id,
-                pts[i * 3 + 0] ,
-                pts[i * 3 + 1] ,
-                pts[i * 3 + 2] 
-            );
-                            
+            image.push_back(make_pair(n_id, local_point));
+            printf("feature id: %d, p_gf: [%f, %f, %f], p_cf: [%f, %f, %f]\n",
+                   n_id, pts[i](0), pts[i](1), pts[i](2), local_point(0), local_point(1), local_point(2));
+
 //#endif
             current_feature_id[i] = n_id;
         }
     }
+    printf("===frame end===\n");
     before_feature_id = current_feature_id;
     current_feature_id.clear();
-    //sort(image.begin(), image.end(), [](const pair<int, Vector3d> &a,
-    //                                    const pair<int, Vector3d> &b)
-    //{
-    //    return a.first < b.first;
-    //});
+    sort(image.begin(), image.end(), [](const pair<int, Vector3d> &a,
+                                        const pair<int, Vector3d> &b)
+        {
+            return a.first < b.first;
+        });
     return image;
 }
 
 vector<Vector3d> DataGenerator::getCloud()
 {
     vector<Vector3d> cloud;
+
     for (int i = 0; i < NUM_POINTS; i++)
     {
-        double xx = pts[i * 3 + 0];
-        double yy = pts[i * 3 + 1];
-        double zz = pts[i * 3 + 2];
-        cloud.push_back(Vector3d(xx, yy, zz));
+        cloud.push_back(pts[i]);
     }
     return cloud;
 }

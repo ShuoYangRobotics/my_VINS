@@ -115,7 +115,7 @@ public:
     Vector2d projectCamPoint(Vector3d ptr);    
 
     /* outputs */
-    Vector4d getQuaternion();
+    Quaterniond getQuaternion();
     Matrix3d getRotation();
     Vector3d getPosition();
     Vector3d getVelocity();
@@ -129,6 +129,9 @@ public:
     void printErrorState(bool is_full);
     void printSlidingWindow();
     void printErrorCovariance(bool is_full);
+
+    map<int, Vector3d> global_features;
+
 };
 
 #endif /* defined(__MyTriangulation__MSCKF__) */

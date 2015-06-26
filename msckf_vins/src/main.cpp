@@ -34,7 +34,7 @@ MSCKF my_kf;
 nav_msgs::Path path;
 double sum_of_path = 0.0;
 Vector3d last_path(0.0, 0.0, 0.0);
-Vector4d curr_q;
+Quaterniond curr_q;
 visualization_msgs::Marker path_line;
 ros::Publisher pub_odometry;
 ros::Publisher pub_path, pub_path1, pub_path2;
@@ -44,15 +44,6 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 {
     imu_buf.push(*imu_msg);
 
-//    double dx = imu_msg->linear_acceleration.x;
-//    double dy = imu_msg->linear_acceleration.y;
-//    double dz = imu_msg->linear_acceleration.z;
-//
-//    double rx = imu_msg->angular_velocity.x;
-//    double ry = imu_msg->angular_velocity.y;
-//    double rz = imu_msg->angular_velocity.z;
-//
-//    my_kf.processIMU(t, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz));
 }
 
 
@@ -60,7 +51,7 @@ void send_imu(const sensor_msgs::Imu &imu_msg)
 {
     double t = imu_msg.header.stamp.toSec();
 
-    //ROS_INFO("processing IMU data with stamp %lf", t);
+    ROS_INFO("processing IMU data with stamp %lf", t);
 
     double dx = imu_msg.linear_acceleration.x;
     double dy = imu_msg.linear_acceleration.y;
@@ -98,11 +89,12 @@ void image_callback(const sensor_msgs::PointCloudConstPtr &image_msg)
         Vector3d world_ptr(x, y, z);
         Vector2d cam_ptr = my_kf.projectCamPoint(world_ptr);
         //ROS_INFO("id %d cam pos (%f, %f, %f) project to (%f, %f)", id, x, y, z, cam_ptr(0), cam_ptr(1));
-        if(cam_ptr(0) > 0 && cam_ptr(0) < COL && cam_ptr(1) > 0 && cam_ptr(1) < ROW) 
-          image.push_back(make_pair(/*gr_id * 10000 + */id, Vector3d(cam_ptr(0), cam_ptr(1), 1)));
+        //if(cam_ptr(0) > 0 && cam_ptr(0) < COL && cam_ptr(1) > 0 && cam_ptr(1) < ROW) 
+          //image.push_back(make_pair(/*gr_id * 10000 + */id, Vector3d(cam_ptr(0), cam_ptr(1), 1)));
+        image.push_back(make_pair(/*gr_id * 10000 + */id, world_ptr));
     }
 
-    //my_kf.processImage(image);
+    my_kf.processImage(image);
 
     sum_of_path += (my_kf.getPosition() - last_path).norm();
     last_path = my_kf.getPosition();
@@ -121,10 +113,10 @@ void image_callback(const sensor_msgs::PointCloudConstPtr &image_msg)
     odometry.pose.pose.position.x = last_path(0);
     odometry.pose.pose.position.y = last_path(1);
     odometry.pose.pose.position.z = last_path(2);
-    odometry.pose.pose.orientation.x = curr_q(1);
-    odometry.pose.pose.orientation.y = curr_q(2);
-    odometry.pose.pose.orientation.z = curr_q(3);
-    odometry.pose.pose.orientation.w = curr_q(0);
+    odometry.pose.pose.orientation.x = curr_q.x();
+    odometry.pose.pose.orientation.y = curr_q.y();
+    odometry.pose.pose.orientation.z = curr_q.z();
+    odometry.pose.pose.orientation.w = curr_q.w();
 //    odometry.twist.twist.linear.x = solution.v(0);
 //    odometry.twist.twist.linear.y = solution.v(1);
 //    odometry.twist.twist.linear.z = solution.v(2);
@@ -160,10 +152,10 @@ void image_callback(const sensor_msgs::PointCloudConstPtr &image_msg)
     tf::Transform transform;
     //transform.setOrigin(tf::Vector3(last_path(0), last_path(1), last_path(2)) );
     tf::Quaternion q;
-    q.setW(curr_q(0));
-    q.setX(curr_q(1));
-    q.setY(curr_q(2));
-    q.setZ(curr_q(3));
+    q.setW(curr_q.w());
+    q.setX(curr_q.x());
+    q.setY(curr_q.y());
+    q.setZ(curr_q.z());
     transform.setRotation(q);
     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "body"));
 
@@ -172,6 +164,21 @@ void image_callback(const sensor_msgs::PointCloudConstPtr &image_msg)
 //    transform.setRotation(q);
 //    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "world_v"));
 //    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "body", "body_v"));
+
+}
+
+void cloud_callback(const sensor_msgs::PointCloudConstPtr &cloud_msg)
+{
+
+    for (int i = 0; i < (int)cloud_msg->points.size(); i++)
+    {
+        int   id = cloud_msg->channels[0].values[i];
+        double x = cloud_msg->points[i].x;
+        double y = cloud_msg->points[i].y;
+        double z = cloud_msg->points[i].z;
+        Vector3d world_ptr(x, y, z);
+        my_kf.global_features[id] = world_ptr;
+    }
 
 }
 
@@ -218,7 +225,7 @@ int main(int argc, char **argv)
     path.header.frame_id = "world";
 
     // init MSCKF
-    Vector4d init_q(1.0, 0.0, 0.0, 0.0);  // w x y z
+    Vector4d init_q(0.0, 0.0, 0.0, 1.0);  // w x y z
     Vector3d init_p(10.0, 0.0, 3.0);
     Vector3d init_v(0.0, 1.0, 0.0);
     Vector3d init_bg(0.0 ,0.0, 0.0);
@@ -230,6 +237,7 @@ int main(int argc, char **argv)
 
     ros::Subscriber sub_imu   = n.subscribe("/imu_3dm_gx4/imu", 1000, imu_callback);
     ros::Subscriber sub_image = n.subscribe("/sensors/image", 1000, image_callback);
+    ros::Subscriber sub_cloud = n.subscribe("/simulation/cloud", 1000, cloud_callback);
 
     ros::spin();
 

@@ -43,6 +43,8 @@ int main(int argc, char** argv)
     sensor_msgs::PointCloud point_cloud;
     point_cloud.header.frame_id = "world";
     point_cloud.header.stamp = ros::Time();
+    sensor_msgs::ChannelFloat32 ids;
+    int i = 0;
     for (auto & it : generator.getCloud())
     {
         geometry_msgs::Point32 p;
@@ -50,7 +52,9 @@ int main(int argc, char** argv)
         p.y = it(1);
         p.z = it(2);
         point_cloud.points.push_back(p);
+        ids.values.push_back(i++);
     }
+    point_cloud.channels.push_back(ids);
     pub_cloud.publish(point_cloud);
 
     cv::namedWindow("camera image", cv::WINDOW_AUTOSIZE);
@@ -115,14 +119,13 @@ int main(int argc, char** argv)
         imu.orientation.w = q.w();
 
         pub_imu.publish(imu);
-        //ROS_INFO("publish imu data with stamp %lf", imu.header.stamp.toSec());
+        printf("publish imu data with stamp %lf\n", imu.header.stamp.toSec());
 
         pub_cloud.publish(point_cloud);
         //publish image data
         if (publish_count % generator.IMU_PER_IMG == 0)
         {
             //publish image data
-            //ROS_INFO("feature count: %lu", generator.getImage().size());
 
             sensor_msgs::PointCloud feature;
             sensor_msgs::ChannelFloat32 ids;
@@ -131,6 +134,11 @@ int main(int argc, char** argv)
                 for (int j = 0; j < COL; j++)
                     pixel.values.push_back(255);
             feature.header.stamp = ros::Time(generator.getTime());
+
+            printf("publish image data with stamp %lf\n", feature.header.stamp.toSec());
+            printf("p_gb: [%f, %f, %f], R_gb: [%f, %f, %f, %f]\n", position(0), position(1), position(2),
+                     q.x(), q.y(), q.z(), q.w());
+
             cv::Mat simu_img(600, 600, CV_8UC3, cv::Scalar(0, 0, 0));
             for (auto & id_pts : generator.getImage())
             {
@@ -158,7 +166,6 @@ int main(int argc, char** argv)
             feature.channels.push_back(ids);
             feature.channels.push_back(pixel);
             pub_image.publish(feature);
-            ROS_INFO("publish image data with stamp %lf", feature.header.stamp.toSec());
             cv::imshow("camera image", simu_img);
             cv::waitKey(100);
             //if (generator.getTime() > DataGenerator::MAX_TIME)

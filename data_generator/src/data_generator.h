@@ -5,13 +5,13 @@
 #include <map>
 #include <algorithm>
 #include <random>
+#include <iostream>
 
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Geometry>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 using namespace std;
 using namespace Eigen;
-
 
 class DataGenerator
 {
@@ -38,16 +38,17 @@ public:
     static int const IMU_PER_IMG = 50;
     static int const MAX_TIME    = 10;
     static int const FOV         = 90;
-    static double constexpr PI   = M_PI;//3.1415926;//acos(-1);
 private:
-    int pts[NUM_POINTS * 3];
+    Vector3d pts[NUM_POINTS];
     double t;
+
     std::map<int, int> before_feature_id;
     std::map<int, int> current_feature_id;
     int current_id;
 
-    Matrix3d Ric;
-    Vector3d Tic;
+    Matrix3d R_bc;
+    Vector3d p_bc;
+
     Matrix3d acc_cov, gyr_cov;
     Matrix2d pts_cov;
     default_random_engine generator;
