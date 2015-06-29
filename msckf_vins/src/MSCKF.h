@@ -77,8 +77,7 @@ private:
     Vector3d gyro_bias;
     Vector3d acce_bias;
     
-    /* camera */    
-    DistortCamera cam;
+
     
     /* fixed rotation between camera and the body frame */
     Matrix3d R_cb;
@@ -96,6 +95,9 @@ private:
     bool getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, MatrixXd measure, MatrixXd pose_mtx, int frame_offset);
     
 public:
+    /* camera */    
+    DistortCamera cam;
+    
     MSCKF();
     ~MSCKF();
     

@@ -16,10 +16,8 @@
 using namespace std;
 using namespace Eigen;
 
-
 #define ROW 480
 #define COL 752
-
 
 int main(int argc, char** argv)
 {
@@ -37,9 +35,7 @@ int main(int argc, char** argv)
     DataGenerator generator;
     ros::Rate loop_rate(generator.FREQ);
 
-    //while (pub_imu.getNumSubscribers() == 0 || pub_image.getNumSubscribers() == 0)
-    //    loop_rate.sleep();
-
+    //prepare point cloud 
     sensor_msgs::PointCloud point_cloud;
     point_cloud.header.frame_id = "world";
     point_cloud.header.stamp = ros::Time();
@@ -122,6 +118,7 @@ int main(int argc, char** argv)
         printf("publish imu data with stamp %lf\n", imu.header.stamp.toSec());
 
         pub_cloud.publish(point_cloud);
+        
         //publish image data
         if (publish_count % generator.IMU_PER_IMG == 0)
         {

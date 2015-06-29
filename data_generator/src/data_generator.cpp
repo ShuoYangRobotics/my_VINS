@@ -14,12 +14,11 @@ DataGenerator::DataGenerator()
             rand() % (6 * MAX_BOX) - 3 * MAX_BOX,
             rand() % (6 * MAX_BOX) - 3 * MAX_BOX);
     }
-    R_bc <<
-        0, 0, -1,
-        -1, 0, 0,
-        0, 1, 0;
+    R_cb << 0, -1, 0,
+            0, 0, 1,
+            -1, 0, 0;
     //Tic << 4, 5, 6;
-    p_bc << 0, -0.14, 0.02;
+    p_cb << -0.14, -0.02, 0;
 
     //acc_cov << 1.3967e-04, 1.4357e-06, 2.1468e-06,
     //        1.4357e-06, 1.4352e-04, 5.7168e-05,
@@ -141,15 +140,9 @@ vector<pair<int, Vector3d>> DataGenerator::getImage()
 
     printf("max: %d\n", current_id);
 
-    Vector4d q_cg = Quaterniond(R_bc.transpose() * R_gb.transpose()).coeffs();
-    Vector3d p_cg = R_bc.transpose() * (R_gb.transpose() * (-position) - p_bc);
-    printf("q_cg: %f, %f, %f, %f, p_cg: %f, %f, %f\n", q_cg(0), q_cg(1), q_cg(2), q_cg(3),
-        p_cg(0), p_cg(1), p_cg(2));  
-
     for (int i = 0; i < NUM_POINTS; i++)
     {
-
-        Vector3d local_point = R_bc.transpose() * (R_gb.transpose() * (pts[i] - position) - p_bc);
+        Vector3d local_point = R_cb * R_gb.transpose() * (pts[i] - position) + p_cb;
 
         double xx = local_point(0);
         double yy = local_point(1);

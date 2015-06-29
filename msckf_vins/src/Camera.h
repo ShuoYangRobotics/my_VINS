@@ -11,8 +11,6 @@
 #include <Eigen/Dense>
 
 class DistortCamera {
-    int width;
-    int height;
     int nRows;
     int nCols;
     
@@ -21,9 +19,7 @@ class DistortCamera {
     
     double ox;
     double oy;
-    
-    double focus_length;
-    
+        
     // distortion parameters, opencv k1, k2, p1, p2, k3
     double k1;
     double k2;
@@ -36,6 +32,9 @@ class DistortCamera {
     Eigen::Matrix2d focusMtx;
     
 public:
+    int width;
+    int height;
+
     DistortCamera();
     void setImageSize(double _height, double _width);
     void setIntrinsicMtx(double _fx, double _fy, double _ox, double _oy);

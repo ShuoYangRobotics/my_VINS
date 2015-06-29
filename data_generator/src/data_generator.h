@@ -46,8 +46,8 @@ private:
     std::map<int, int> current_feature_id;
     int current_id;
 
-    Matrix3d R_bc;
-    Vector3d p_bc;
+    Matrix3d R_cb;
+    Vector3d p_cb;
 
     Matrix3d acc_cov, gyr_cov;
     Matrix2d pts_cov;

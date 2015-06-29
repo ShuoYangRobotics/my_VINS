@@ -36,6 +36,7 @@ MSCKF::MSCKF()
                            -6.149638e-4,
                            -1.218237e-2);
     
+
     current_frame = -1;   // initially no frame
     
 //    R_cb = Matrix3d::Identity();
@@ -301,7 +302,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 for (int i = item.second.start_frame; i < current_frame; i++)
                 {
                     // construct measure
-                    measure_mtx.block<2,1>(0, i-item.second.start_frame) = projectCamPoint(itr_f->point);
+                    measure_mtx.block<2,1>(0, i-item.second.start_frame) = itr_f->point.segment(0, 2); 
                     
                     // construct pose
                     Matrix3d R_gb, R_gc;
@@ -357,6 +358,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 
                 {
 
+                VectorXd ri;
+                MatrixXd Hi;
 
                 ROS_INFO("getResidualH global_features" );
 
@@ -576,24 +579,22 @@ void MSCKF::addSlideState()
     fullErrorCovariance = tmpCovariance;
 }
 
-void MSCKF::addFeatures(const vector<pair<int, Vector3d>> &image)
+void MSCKF::addFeatures(const vector<pair<int, Vector3d>>& image)
 {
     // add features to the feature record
-    for (auto & id_pts : image)
+    for (auto& id_pts : image)
     {
-        int   id = id_pts.first;
-        double x = id_pts.second(0);
-        double y = id_pts.second(1);
-        double z = id_pts.second(2);
+        int id = id_pts.first;
+        Vector3d p = id_pts.second; 
         
         // this is a new feature record
         if (feature_record_dict.find(id) == feature_record_dict.end())
         {
-            feature_record_dict[id] = FeatureRecord(current_frame, Vector3d(x, y, z));
+            feature_record_dict[id] = FeatureRecord(current_frame, p);
         }
         else // append to existing record
         {
-            feature_record_dict[id].feature_points.push_back(FeatureInformation(Vector3d(x, y, z)));
+            feature_record_dict[id].feature_points.push_back(FeatureInformation(p));
             feature_record_dict[id].is_lost = false;
         }
     }
@@ -686,16 +687,17 @@ void MSCKF::removeFrameFeatures(int index)
         if (item.second.start_frame < index)
         {
             item.second.feature_points.erase(
-                item.second.feature_points.begin(), item.second.feature_points.begin() + (index - item.second.start_frame)
+                    item.second.feature_points.begin(), item.second.feature_points.begin() + (index - item.second.start_frame)
             );
         }
         else if (item.second.start_frame == index)
         {
             item.second.feature_points.erase(item.second.feature_points.begin());
+
         }
         else
         {
-            item.second.start_frame = item.second.start_frame - 1;
+            item.second.start_frame--;
         }
         
         if (item.second.feature_points.size() == 0)
@@ -754,7 +756,7 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
         Vector2d projPtr = projectPoint(feature_pose, R_gb, pose_mtx.block<3, 1>(4, j), fullNominalState.segment(16, 3));
         //Vector2d projPtr;
         cout << "projPtr projectPoint" << projPtr.transpose() << endl;
-
+        /*
         if (feature_in_c(2) < 1e-4)
         {
           projPtr = measure.col(j);
@@ -763,16 +765,17 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
         else
         {
           projPtr = projectCamPoint(feature_in_c);
-        }
-        if (projPtr(0)<0 || projPtr(1)>800 || projPtr(1)<0||projPtr(1)>800)
-          return false;
-        cout << "projPtr" << projPtr.transpose() << endl;
+        }*/
+        //if (projPtr(0)<0 || projPtr(1)>800 || projPtr(1)<0||projPtr(1)>800)
+        //  return false;
+       // cout << "projPtr" << projPtr.transpose() << endl;
 
         cout << "measure is " << measure.col(j).transpose() << endl;
         cout << "feature in c is " << feature_in_c.transpose() << endl;
-        cout << "estimat is " << projPtr << endl;
+        cout << "estimat is " << projPtr.transpose() << endl;
         ri.segment(j * 2, 2) = measure.col(j) - projPtr;
-        
+        cout << "ri is" << ri.segment(j * 2, 2)  <<endl;
+
         Mij = cam.Jh(feature_in_c) * R_cb * R_gb.transpose();
         tmp39 = MatrixXd::Zero(3, 9);
         tmp39.block<3, 3>(0, 0) = skew_mtx(feature_pose - pose_mtx.block<3, 1>(4, j));
@@ -799,19 +802,24 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
 //    MatrixXd D = Hfi.transpose()-U*S*V.transpose();
 //    std::cout << "\n" << D.norm() << "  " << sqrt((D.adjoint()*D).trace()) << "\n";
     
-//    printf("left null size (%d, %d)\n", left_null.rows(), left_null.cols());
-//    printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
-//    printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
-    
-    ri = left_null * ri;
-    Hi = left_null * Hi;
-    
-//    cout << "one measure, one H" << endl;
-//    cout << "------------------" << endl;
-//    cout << ri << endl;
-//    cout << Hi << endl;
-//    printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
-//    printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
+    printf("left null size (%d, %d)\n", left_null.rows(), left_null.cols());
+    printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
+    printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
+    cout << "before left null" << endl;
+    cout << "------------------" << endl;
+    cout << ri << endl;
+    cout << Hi << endl;
+
+   // ri = left_null * ri;
+   // Hi = left_null * Hi;
+
+
+   // cout << "one measure, one H" << endl;
+   // cout << "------------------" << endl;
+   // cout << ri << endl;
+   // cout << Hi << endl;
+   // printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
+   // printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
 
     return true;
 }

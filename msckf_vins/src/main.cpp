@@ -43,9 +43,7 @@ ros::Publisher pub_pose, pub_pose2;
 void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 {
     imu_buf.push(*imu_msg);
-
 }
-
 
 void send_imu(const sensor_msgs::Imu &imu_msg)
 {
@@ -86,12 +84,12 @@ void image_callback(const sensor_msgs::PointCloudConstPtr &image_msg)
         double x = image_msg->points[i].x;
         double y = image_msg->points[i].y;
         double z = image_msg->points[i].z;
-        Vector3d world_ptr(x, y, z);
-        Vector2d cam_ptr = my_kf.projectCamPoint(world_ptr);
+        Vector3d p_cf(x, y, z);
+        Vector2d cam_ptr = my_kf.projectCamPoint(p_cf);
         //ROS_INFO("id %d cam pos (%f, %f, %f) project to (%f, %f)", id, x, y, z, cam_ptr(0), cam_ptr(1));
-        //if(cam_ptr(0) > 0 && cam_ptr(0) < COL && cam_ptr(1) > 0 && cam_ptr(1) < ROW) 
+        if(cam_ptr(0) > 0 && cam_ptr(0) < my_kf.cam.width && cam_ptr(1) > 0 && cam_ptr(1) < my_kf.cam.height) 
           //image.push_back(make_pair(/*gr_id * 10000 + */id, Vector3d(cam_ptr(0), cam_ptr(1), 1)));
-        image.push_back(make_pair(/*gr_id * 10000 + */id, world_ptr));
+            image.push_back(make_pair(/*gr_id * 10000 + */id, Vector3d(cam_ptr(0), cam_ptr(1), 1)));
     }
 
     my_kf.processImage(image);
@@ -225,7 +223,7 @@ int main(int argc, char **argv)
     path.header.frame_id = "world";
 
     // init MSCKF
-    Vector4d init_q(0.0, 0.0, 0.0, 1.0);  // w x y z
+    Vector4d init_q(0.0, 0.0, 0.0, 1.0);  // x y z w
     Vector3d init_p(10.0, 0.0, 3.0);
     Vector3d init_v(0.0, 1.0, 0.0);
     Vector3d init_bg(0.0 ,0.0, 0.0);

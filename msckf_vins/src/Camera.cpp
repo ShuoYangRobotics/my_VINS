@@ -42,7 +42,7 @@ void DistortCamera::setIntrinsicMtx(double _fx, double _fy, double _ox, double _
     optical(1) = oy;
     
     focusMtx(0,0) = fx;
-    focusMtx(1,0) = fy;
+    focusMtx(1,1) = fy;
 }
 void DistortCamera::setDistortionParam(double _k1, double _k2, double _p1, double _p2, double _k3)
 {
@@ -106,7 +106,7 @@ MatrixXd DistortCamera::Jh(Vector3d ptr)
     
     r = u*u + v*v;
     
-    dr = 1 + k1*r*r + k2*powf(r,4) + k3* powf(r, 6);
+    dr = 1 + k1*r*r + k2 * powf(r,4) + k3 * powf(r, 6);
     
     dt(0) = 2*u*v*p1+(r+2*u*u)*p2;
     dt(1) = 2*u*v*p2+(r+2*v*v)*p1;
@@ -157,7 +157,7 @@ Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
     Matrix3d R_c0ci, R_cic0;
     Vector3d t_c0ci, t_cic0;
     
-    q_list.col(0) = Vector4d(1,0,0,0);
+    q_list.col(0) = Vector4d(0,0,0,1);
     t_list.col(0) = t_wci;
     
     // TODO: rewrite this piece use quaternion
