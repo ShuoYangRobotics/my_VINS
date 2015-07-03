@@ -11,6 +11,7 @@
 #include "g_param.h"
 #include <ros/ros.h>
 
+
 using namespace ros;
 static Vector3d g(0.0f, 0.0f, -9.8f);
 
@@ -149,7 +150,8 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
         return;
     }
     
-    double dt = t - current_time;
+    //double dt = t - current_time;
+    double dt = 1/100.0;
     //cout << "dt: " << dt << endl;
     
     current_time = t;
@@ -230,7 +232,7 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
     
     fullErrorCovariance.block<ERROR_STATE_SIZE, ERROR_STATE_SIZE>(0, 0) = errorCovariance;
     
-    return;
+        return;
 }
 
 void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
@@ -316,27 +318,27 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                     /* p_bc = -R_cb^T * p_cb */
                     p_gc = p_gb + -R_cb.transpose() * fullNominalState.segment(16, 3);
 
-                    printf("frame time: %f , q_gc: %f, %f, %f, %f, p_gc: %f, %f, %f\nq_gb: %f, %f, %f, %f, p_gb: %f, %f, %f\n", 
-                        (i - current_frame) *0.5, 
-                        R_to_quaternion(R_gc)(0), R_to_quaternion(R_gc)(1), R_to_quaternion(R_gc)(2), R_to_quaternion(R_gc)(3),
-                        p_gc(0), p_gc(1), p_gc(2), 
-                        itr_s->q.x(), itr_s->q.y(), itr_s->q.z(), itr_s->q.w(), 
-                        itr_s->p(0), itr_s->p(1), itr_s->p(2));
+                    // printf("frame time: %f , q_gc: %f, %f, %f, %f, p_gc: %f, %f, %f\nq_gb: %f, %f, %f, %f, p_gb: %f, %f, %f\n", 
+                    //     (i - current_frame) *0.5, 
+                    //     R_to_quaternion(R_gc)(0), R_to_quaternion(R_gc)(1), R_to_quaternion(R_gc)(2), R_to_quaternion(R_gc)(3),
+                    //     p_gc(0), p_gc(1), p_gc(2), 
+                    //     itr_s->q.x(), itr_s->q.y(), itr_s->q.z(), itr_s->q.w(), 
+                    //     itr_s->p(0), itr_s->p(1), itr_s->p(2));
 
-                    printf("    p_cf: %f, %f, %f, z_cf: %f, %f\n", itr_f->point(0), itr_f->point(1), itr_f->point(2), 
-                        measure_mtx(0, i-item.second.start_frame), measure_mtx(1, i-item.second.start_frame) );
+                    // printf("    p_cf: %f, %f, %f, z_cf: %f, %f\n", itr_f->point(0), itr_f->point(1), itr_f->point(2), 
+                    //     measure_mtx(0, i-item.second.start_frame), measure_mtx(1, i-item.second.start_frame) );
 
                    
-                    Vector3d p_cf =  R_gc.transpose() * (ptr_pose - p_gc);
+                    // Vector3d p_cf =  R_gc.transpose() * (ptr_pose - p_gc);
+                    Vector3d p_cf =  R_cb* R_gb.transpose() * (ptr_pose - p_gb) + fullNominalState.segment(16, 3);
 
-
-                    printf("    q_cg: %f, %f, %f, %f, p_gc: %f, %f, %f\n", 
-                        R_to_quaternion(R_gc.transpose())(0), R_to_quaternion(R_gc.transpose())(1), R_to_quaternion(R_gc.transpose())(2), R_to_quaternion(R_gc.transpose())(3), 
-                        (-R_gc.transpose() * p_gc)(0), (-R_gc.transpose() * p_gc)(1), (-R_gc.transpose() * p_gc)(2));
-
-                    printf("    p_gf: %f, %f, %f, p_cf(from ptr_pose): %f, %f, %f\n", 
-                        ptr_pose(0), ptr_pose(1), ptr_pose(2), 
-                        p_cf(0), p_cf(1), p_cf(2));
+                    // printf("    q_cg: %f, %f, %f, %f, p_gc: %f, %f, %f\n", 
+                    //     R_to_quaternion(R_gc.transpose())(0), R_to_quaternion(R_gc.transpose())(1), R_to_quaternion(R_gc.transpose())(2), R_to_quaternion(R_gc.transpose())(3), 
+                    //     (-R_gc.transpose() * p_gc)(0), (-R_gc.transpose() * p_gc)(1), (-R_gc.transpose() * p_gc)(2));
+                    Vector2d a = cam.h(p_cf);
+                    printf("    p_gf: %f, %f, %f, p_cf(from ptr_pose): %f, %f, %f, a: %f %f\n", 
+                         ptr_pose(0), ptr_pose(1), ptr_pose(2), 
+                         p_cf(0), p_cf(1), p_cf(2), a(0), a(1));
                     
                     
                     pose_mtx_for_tri.block<4,1>(0, i-item.second.start_frame) = R_to_quaternion(R_gc);  // q_gc
@@ -356,21 +358,22 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 ptr_pose = cam.triangulate(measure_mtx, pose_mtx_for_tri);
                 ROS_INFO("I triangulated a point with id %d (%lf, %lf, %lf)", item.first, ptr_pose(0), ptr_pose(1), ptr_pose(2));
                 
-                {
+                // if (0)
+                // {
 
-                VectorXd ri;
-                MatrixXd Hi;
+                // VectorXd ri;
+                // MatrixXd Hi;
 
-                ROS_INFO("getResidualH global_features" );
+                // ROS_INFO("getResidualH global_features" );
 
-                getResidualH(ri, Hi, global_features[item.first], measure_mtx, pose_mtx, item.second.start_frame);
-                cout << "ri is" << ri << endl;
-                cout << "Hi is"  << Hi << endl;
+                // getResidualH(ri, Hi, global_features[item.first], measure_mtx, pose_mtx, item.second.start_frame);
+                // // cout << "ri is" << ri << endl;
+                // // cout << "Hi is"  << Hi << endl;
 
-                }
+                // }
 
                 //set to true position
-                ptr_pose = global_features[item.first];
+                //ptr_pose = global_features[item.first];
 
                 // check ptr_pose validity (it cannot be strange value)
                 bool is_valid = true;
@@ -393,6 +396,10 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                     MatrixXd Hi;
                     if (getResidualH(ri, Hi, ptr_pose, measure_mtx, pose_mtx, item.second.start_frame) == true)
                     {
+                      cout << "ri is" << ri.transpose() << endl;
+                      cout << "Hi row is " << Hi.rows() << endl;
+                      cout << 2 * num_frame - 3 << endl;
+                      cout << "Hi is" << Hi.transpose() << endl;
                       num_measure++;
                       row_H += (2 * num_frame - 3); // after feature error marginalization
                       
@@ -433,21 +440,22 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
         std::list<VectorXd>::iterator itr_r = residual_list.begin();
         std::list<int>::iterator itr_H_size = H_mtx_block_size_list.begin();
         
+           cout << "row_H " << row_H<< ", col_H " << col_H << endl;
         int row_H_count = 0;
         for (int i = 0; i < num_measure; i++)
         {
-//            cout << (*itr_H).cols() << ", " << (*itr_H).rows() << endl;
-//            cout << *itr_H_size << endl;
+           cout << "row_Hi " <<(*itr_H).rows() << ", col_Hi" << (*itr_H).cols() << endl;
+           // cout << *itr_H_size << endl;
             
-            H.block(row_H_count, 0, *itr_H_size, col_H) = (*itr_H);
-            r.segment(row_H_count, *itr_H_size) = (*itr_r);
+            H.block(i*(*itr_H).rows(), 0, (*itr_H).rows(), (*itr_H).cols()) = (*itr_H);
+            r.segment(i*(*itr_r).rows(), (*itr_r).rows()) = (*itr_r);
             row_H_count += *itr_H_size;
             
             itr_H++;
             itr_r++;
             itr_H_size++;
         }
-
+        cout << "final r" << r.transpose() << endl;
         VectorXd delta_x;
         // when there are a lot of features, use QR of H to speed up computation
         //if (H.rows()>H.cols())
@@ -473,14 +481,21 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
         else
         {
             MatrixXd Rq = MatrixXd::Identity(row_H, row_H) * measure_noise*measure_noise;
-            //ROS_INFO("H matrix");
-            //cout << H << endl;
-            MatrixXd tmpK = (H * fullErrorCovariance * H.transpose() + Rq).inverse();
-            MatrixXd K = fullErrorCovariance * H.transpose() * tmpK;
-            //ROS_INFO("K matrix");
-            //cout << K << endl;
+            ROS_INFO("H matrix");
+            cout << H.transpose() << endl;
+            // MatrixXd tmpK = (H * fullErrorCovariance * H.transpose() + Rq).inverse();
+            // MatrixXd K = fullErrorCovariance * H.transpose() * tmpK;
+            // K = tmpError * tmpK
+
+            MatrixXd tmpK = H * fullErrorCovariance * H.transpose() + Rq;
+            MatrixXd tmpError = fullErrorCovariance * H.transpose();
+            MatrixXd tmpKinv = tmpK.colPivHouseholderQr().solve(MatrixXd::Identity(tmpK.rows(), tmpK.cols()));
+            MatrixXd K = tmpError * tmpKinv;
+            ROS_INFO("K matrix");
+            cout << K << endl;
             MatrixXd ImKH = MatrixXd::Identity(col_H, col_H) - K * H;
-            fullErrorCovariance = ImKH * fullErrorCovariance*ImKH.transpose() + K * Rq * K.transpose();
+            // fullErrorCovariance = ImKH * fullErrorCovariance*ImKH.transpose() + K * Rq * K.transpose();
+            fullErrorCovariance = ImKH * fullErrorCovariance;
             //ROS_INFO("r");
             //cout << r.transpose() << endl;
             delta_x = K * r;
@@ -488,7 +503,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
         
         
         ROS_INFO("A correction calculated");
-        cout << delta_x << endl;;
+        cout << delta_x.transpose() << endl;;
         correctNominalState(delta_x);
 
     }
@@ -714,6 +729,11 @@ void MSCKF::removeFrameFeatures(int index)
 
 Vector2d MSCKF::projectCamPoint(Vector3d ptr)
 {
+    static int i = 0;
+    i++;
+    // printf("[%d] projjjj\n",i);
+    // cout << ptr << endl;
+    // cout << cam.h(ptr) << endl;
     return cam.h(ptr);
 }
 
@@ -753,9 +773,11 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
         //double zz = pts[i * 3 + 2] - position(2);
         //Vector3d local_point = Ric.inverse() * (quat.inverse() * Vector3d(xx, yy, zz) - Tic);
         Vector3d feature_in_c = R_cb * R_gb.transpose() * (feature_pose - pose_mtx.block<3, 1>(4, j)) + fullNominalState.segment(16, 3);
-        Vector2d projPtr = projectPoint(feature_pose, R_gb, pose_mtx.block<3, 1>(4, j), fullNominalState.segment(16, 3));
-        //Vector2d projPtr;
-        cout << "projPtr projectPoint" << projPtr.transpose() << endl;
+        //Vector2d projPtr = projectPoint(feature_pose, R_gb, pose_mtx.block<3, 1>(4, j), fullNominalState.segment(16, 3));
+        
+    //zij = cam.h(R_cb * R_gb.transpose() * (feature_pose - p_gb) + p_cb);
+        Vector2d projPtr = projectCamPoint(feature_in_c);
+        //cout << "projPtr projectPoint" << projPtr.transpose() << endl;
         /*
         if (feature_in_c(2) < 1e-4)
         {
@@ -774,22 +796,29 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
         cout << "feature in c is " << feature_in_c.transpose() << endl;
         cout << "estimat is " << projPtr.transpose() << endl;
         ri.segment(j * 2, 2) = measure.col(j) - projPtr;
-        cout << "ri is" << ri.segment(j * 2, 2)  <<endl;
+        cout << "ri piece is" << ri.segment(j * 2, 2)  <<endl;
+        if (ri.segment(j * 2, 2).norm() > 3)
+        {
+            return false;
+        }
 
         Mij = cam.Jh(feature_in_c) * R_cb * R_gb.transpose();
         tmp39 = MatrixXd::Zero(3, 9);
+
         tmp39.block<3, 3>(0, 0) = skew_mtx(feature_pose - pose_mtx.block<3, 1>(4, j));
         tmp39.block<3, 3>(0, 3) = -Matrix3d::Identity();
         
         HxBj = Mij * tmp39;                           // 2x9
         Hc = cam.Jh(feature_in_c);   // 2x3
-        cout << "HxBj is " << HxBj << endl;
-        cout << "Hc is " << Hc << endl;
+        cout << "Mij is " << endl << Mij << endl;
+        cout << "tmp39 is " << endl << tmp39 << endl;
+        cout << "HxBj is " << endl << HxBj << endl;
+        cout << "Hc is " << endl << Hc << endl;
         
         Hi.block<2, 9>(j * 2, ERROR_STATE_SIZE + 3 + ERROR_POSE_STATE_SIZE * (frame_offset + j)) = HxBj;
         Hi.block<2, 3>(j * 2, ERROR_STATE_SIZE) = Hc;
         
-        Hf = cam.Jh(feature_pose) * R_cb * R_gb.transpose();
+        Hf = cam.Jh(feature_in_c) * R_cb * R_gb.transpose();
         Hfi.block<2, 3>(j * 2, 0) = Hf.cast<double>();
     }
     // now carry out feature error marginalization
@@ -802,16 +831,16 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
 //    MatrixXd D = Hfi.transpose()-U*S*V.transpose();
 //    std::cout << "\n" << D.norm() << "  " << sqrt((D.adjoint()*D).trace()) << "\n";
     
-    printf("left null size (%d, %d)\n", left_null.rows(), left_null.cols());
-    printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
-    printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
-    cout << "before left null" << endl;
-    cout << "------------------" << endl;
-    cout << ri << endl;
-    cout << Hi << endl;
+    // printf("left null size (%d, %d)\n", left_null.rows(), left_null.cols());
+    // printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
+    // printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
+    // cout << "before left null" << endl;
+    // cout << "------------------" << endl;
+    // cout << ri << endl;
+    // cout << Hi << endl;
 
-   // ri = left_null * ri;
-   // Hi = left_null * Hi;
+   ri = left_null * ri;
+   Hi = left_null * Hi;
 
 
    // cout << "one measure, one H" << endl;
@@ -875,6 +904,12 @@ void MSCKF::printSlidingWindow()
     std::cout<<std::endl;
 }
 
+void MSCKF::setErrorCovarianceIdentity()
+{
+    //fullErrorCovariance.setIdentity(fullErrorCovariance.rows(), fullErrorCovariance.cols());
+    //fullErrorCovariance.block<ERROR_STATE_SIZE, ERROR_STATE_SIZE>(0, 0) = errorCovariance;
+    //errorCovariance.setIdentity(errorCovariance.rows(), errorCovariance.cols());
+}
 void MSCKF::printErrorCovariance(bool is_full)
 {
     if (is_full)

@@ -53,7 +53,7 @@ int main(int argc, char** argv)
     point_cloud.channels.push_back(ids);
     pub_cloud.publish(point_cloud);
 
-    cv::namedWindow("camera image", cv::WINDOW_AUTOSIZE);
+    // cv::namedWindow("camera image", cv::WINDOW_AUTOSIZE);
 
     int publish_count = 0;
 
@@ -163,8 +163,8 @@ int main(int argc, char** argv)
             feature.channels.push_back(ids);
             feature.channels.push_back(pixel);
             pub_image.publish(feature);
-            cv::imshow("camera image", simu_img);
-            cv::waitKey(100);
+            // cv::imshow("camera image", simu_img);
+            // cv::waitKey(100);
             //if (generator.getTime() > DataGenerator::MAX_TIME)
             //    break;
         }
