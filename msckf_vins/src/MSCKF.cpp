@@ -150,8 +150,8 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
         return;
     }
     
-    //double dt = t - current_time;
-    double dt = 1/100.0;
+    double dt = t - current_time;
+    //double dt = 1/100.0;
     //cout << "dt: " << dt << endl;
     
     current_time = t;
