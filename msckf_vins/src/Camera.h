@@ -27,7 +27,6 @@ class DistortCamera {
     double p2;
     double k3;
     
-    Eigen::Matrix3d K;
     Eigen::Vector2d optical;
     Eigen::Matrix2d focusMtx;
     

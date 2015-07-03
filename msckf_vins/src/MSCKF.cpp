@@ -302,7 +302,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 for (int i = item.second.start_frame; i < current_frame; i++)
                 {
                     // construct measure
-                    measure_mtx.block<2,1>(0, i-item.second.start_frame) = itr_f->point.segment(0, 2); 
+                    measure_mtx.block<2,1>(0, i-item.second.start_frame) = projectCamPoint(itr_f->point.segment(0, 3)); 
                     
                     // construct pose
                     Matrix3d R_gb, R_gc;
@@ -323,8 +323,9 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                         itr_s->q.x(), itr_s->q.y(), itr_s->q.z(), itr_s->q.w(), 
                         itr_s->p(0), itr_s->p(1), itr_s->p(2));
 
-                    printf("    p_cf: %f, %f, %f, z_cf: %f, %f\n", itr_f->point(0), itr_f->point(1), itr_f->point(2), 
-                        measure_mtx(0, i-item.second.start_frame), measure_mtx(1, i-item.second.start_frame) );
+                    Vector3d p_gf = R_gc * itr_f->point + p_gc;
+                    printf("    p_cf: %f, %f, %f, z_cf: %f, %f, p_gf: %f, %f, %f\n", itr_f->point(0), itr_f->point(1), itr_f->point(2), 
+                        measure_mtx(0, i-item.second.start_frame), measure_mtx(1, i-item.second.start_frame),  p_gf(0), p_gf(1), p_gf(2));
 
                    
                     Vector3d p_cf =  R_gc.transpose() * (ptr_pose - p_gc);
@@ -356,6 +357,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 ptr_pose = cam.triangulate(measure_mtx, pose_mtx_for_tri);
                 ROS_INFO("I triangulated a point with id %d (%lf, %lf, %lf)", item.first, ptr_pose(0), ptr_pose(1), ptr_pose(2));
                 
+                if (0)
                 {
 
                 VectorXd ri;

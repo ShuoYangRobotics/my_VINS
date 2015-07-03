@@ -14,7 +14,6 @@ using namespace std;
 using namespace Eigen;
 DistortCamera::DistortCamera()
 {
-    K = Matrix3d::Identity(3,3);
     optical = Vector2d::Zero(2,1);
     focusMtx = Matrix2d::Zero(2,2);
 }
@@ -33,10 +32,6 @@ void DistortCamera::setIntrinsicMtx(double _fx, double _fy, double _ox, double _
     fy = _fy;
     ox = _ox;
     oy = _oy;
-    K(0,0) = fx;
-    K(0,2) = ox;
-    K(1,1) = fy;
-    K(1,2) = oy;
     
     optical(0) = ox;
     optical(1) = oy;
