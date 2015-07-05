@@ -138,19 +138,19 @@ MatrixXd DistortCamera::Jh(Vector3d ptr)
     return J;
 }
 
-// measure is 2f
-Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
+// measure_mtx is 2f
+Vector3d DistortCamera::triangulate(MatrixXd measure_mtx, MatrixXd pose_mtx)
 {
-    std::cout << "measure is " << std::endl << measure << std::endl;
-    std::cout << "pose is " << std::endl<< pose << std::endl;
+    std::cout << "measure_mtx is " << std::endl << measure_mtx << std::endl;
+    std::cout << "pose_mtx is " << std::endl<< pose_mtx << std::endl;
     Vector3d return_pose = Vector3d(0.0f, 0.0f, 0.0f);
-    int num_item = (int)pose.cols();
+    int num_item = (int)pose_mtx.cols();
     
     MatrixXd q_list = MatrixXd::Zero(4, num_item);
     MatrixXd t_list = MatrixXd::Zero(3, num_item);
     
-    Matrix3d R_wc0 = quaternion_to_R(pose.block<4,1>(0,0));
-    Vector3d t_wc0 = pose.block<3,1>(4,0);
+    Matrix3d R_wc0 = quaternion_to_R(pose_mtx.block<4,1>(0,0));
+    Vector3d t_wc0 = pose_mtx.block<3,1>(4,0);
     
     Matrix3d R_wci = Matrix3d::Identity(3, 3);
     Vector3d t_wci = Vector3d::Zero(3, 1);
@@ -163,8 +163,8 @@ Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
     // TODO: rewrite this piece use quaternion
     for (int i=1; i<num_item; i++)
     {
-        R_wci = quaternion_to_R(pose.block<4,1>(0,i));
-        t_wci = pose.block<3,1>(4,i);
+        R_wci = quaternion_to_R(pose_mtx.block<4,1>(0,i));
+        t_wci = pose_mtx.block<3,1>(4,i);
         
         R_c0ci = R_wc0.transpose()*R_wci;
         t_c0ci = R_wc0.transpose()*(t_wci - t_wc0);
@@ -185,17 +185,17 @@ Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
     Matrix3d R_wbi, R_wbj;
     double depth;
 
-    ptr_i(0) = (measure(0,0)-ox)/fx; 
-    ptr_i(1) = (measure(1,0)-oy)/fy; 
+    ptr_i(0) = (measure_mtx(0,0)-ox)/fx; 
+    ptr_i(1) = (measure_mtx(1,0)-oy)/fy; 
     ptr_i(2) = 1;
-    ptr_j(0) = (measure(0,1)-ox)/fx; 
-    ptr_j(1) = (measure(1,1)-oy)/fy; 
+    ptr_j(0) = (measure_mtx(0,1)-ox)/fx; 
+    ptr_j(1) = (measure_mtx(1,1)-oy)/fy; 
     ptr_j(2) = 1;
 
-    R_wbi = quaternion_to_R(pose.block<4,1>(0,0));
-    R_wbj = quaternion_to_R(pose.block<4,1>(0,1));
-    ti = pose.block<3,1>(4,0);
-    tj = pose.block<3,1>(4,1);
+    R_wbi = quaternion_to_R(pose_mtx.block<4,1>(0,0));
+    R_wbj = quaternion_to_R(pose_mtx.block<4,1>(0,1));
+    ti = pose_mtx.block<3,1>(4,0);
+    tj = pose_mtx.block<3,1>(4,1);
 
     nK(0,0) = 1; nK(1,1) = 1;
     nK(0,2) = - ptr_i(0);
@@ -226,7 +226,7 @@ Vector3d DistortCamera::triangulate(MatrixXd measure, MatrixXd pose)
             R_cic0 = quaternion_to_R(q_list.col(i));
             g_ptr = R_cic0*tmp_theta + theta(2)*t_list.col(i);
             
-            f.segment(i*2, 2) = measure.col(i) - h(g_ptr);
+            f.segment(i*2, 2) = measure_mtx.col(i) - h(g_ptr);
             
             Jg.col(0) = R_cic0.col(0);
             Jg.col(1) = R_cic0.col(1);

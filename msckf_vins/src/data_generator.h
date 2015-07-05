@@ -32,11 +32,11 @@ public:
 
     vector<pair<int, Vector3d>> getImage();
 
-    static int const NUM_POINTS  = 500;
+    static int const NUM_POINTS  = 2500;
     static int const MAX_BOX     = 10;
-    static int const FREQ        = 100;
+    static int const FREQ        = 200;
     static int const IMU_PER_IMG = 50;
-    static int const MAX_TIME    = 10;
+    static int const MAX_TIME    = 30;
     static int const FOV         = 90;
 private:
     Vector3d pts[NUM_POINTS];

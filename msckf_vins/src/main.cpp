@@ -240,8 +240,8 @@ int main(int argc, char **argv)
     my_kf.setCalibParam(init_pcb, 365.07984, 365.12127, 381.0196, 254.4431,
                             -2.842958e-1, 8.7155025e-2, -1.4602925e-4, -6.149638e-4, -1.218237e-2);
     my_kf.setNominalState(init_q, init_p, init_v, init_bg, init_ba);
-    my_kf.setMeasureNoise(15.0);
-    my_kf.setNoiseMatrix(0.1, 1.1, 0.1, 0.1);
+    my_kf.setMeasureNoise(17.0);
+    my_kf.setNoiseMatrix(0.0, 0.0, 0.0, 0.0);
 
     DataGenerator generator;
     ros::Rate loop_rate(generator.FREQ);
