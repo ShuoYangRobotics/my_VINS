@@ -14,7 +14,7 @@
 
 #ifndef DEBUG_FLAG
 
-#define SLIDING_WINDOW_SIZE 30
+#define SLIDING_WINDOW_SIZE 10
 
 #define NOMINAL_STATE_SIZE   16    // 4 + 3 + 3 + 3 + 3
 #define ERROR_STATE_SIZE     15    // 3 + 3 + 3 + 3 + 3
