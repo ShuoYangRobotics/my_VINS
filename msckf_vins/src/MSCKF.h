@@ -16,6 +16,7 @@
 #include <vector>
 #include <numeric>
 #include <Eigen/Dense>
+#include <Eigen/QR>
 
 //#include <ros/ros.h>
 //#include <ros/console.h>
@@ -112,6 +113,8 @@ public:
     
     void setNoiseMatrix(double dgc, double dac, double dwgc, double dwac);
     void setMeasureNoise(double _noise);
+
+    void setErrorCovarianceIdentity();
 
     // test function...
     Vector2d projectCamPoint(Vector3d ptr);    

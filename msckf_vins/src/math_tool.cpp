@@ -77,6 +77,6 @@ Vector4d quaternion_correct(Vector4d q, Vector3d d_theta)
                    );
     dq.w() = 1 - dq.vec().transpose() * dq.vec();
     
-    qf = (qf * dq).normalized();
+    qf = (dq * qf).normalized();
     return qf.coeffs();
 }

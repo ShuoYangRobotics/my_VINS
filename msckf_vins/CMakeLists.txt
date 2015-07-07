@@ -25,6 +25,7 @@ add_executable(msckf_vins_node
   src/Camera.cpp
   src/math_tool.cpp
   src/MSCKF.cpp
+  src/data_generator.cpp
 )
 
 target_link_libraries(msckf_vins_node
