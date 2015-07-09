@@ -23,7 +23,6 @@ ros::Publisher pub_sim_cloud;
 ros::Publisher pub_odometry;
 ros::Publisher pub_pose;
 ros::Publisher pub_path;
-tf::TransformBroadcaster br;
 
 // visualize results
 nav_msgs::Path path;
@@ -118,10 +117,9 @@ void imageCallback(const sensor_msgs::PointCloud& image_msg)
         image.push_back(make_pair(id, Vector2d(x, y)));
     }
     cameraMeasurements->addFeatures(image);
-    msckf->updateCamera(*cameraMeasurements);
+    //msckf->updateCamera(*cameraMeasurements);
     cout << *msckf << endl;
 }
-
 
 void setupROS()
 {
@@ -212,6 +210,7 @@ void publishIMUAndSimulation()
     pub_imu.publish(imu);
     imuCallback(imu);
 
+    static tf::TransformBroadcaster br;
     tf::Transform transform;
     transform.setOrigin(tf::Vector3(position(0), position(1), position(2)));
     tf::Quaternion q;
@@ -271,7 +270,7 @@ void publishImageData()
 void setup()
 {
     calib = new Calib();
-    calib->camera.setIntrinsicParam(365.07984, 365.12127, 381.0196, 254.4431);
+    calib->camera.setIntrinsicParam(365.07984, 365.12127, 381.01962, 254.44318);
     calib->camera.setDistortionParam(-2.842958e-1, 8.7155025e-2, -1.4602925e-4, -6.149638e-4, -1.218237e-2);
 
     calib->delta_t = (double) 1 / DataGenerator::FREQ;
@@ -294,8 +293,6 @@ void setup()
     msckf->x.segment<4>(0) = Quaterniond(generator->getRotation()).coeffs();
     msckf->x.segment<3>(0 + 4) = generator->getPosition();
     msckf->x.segment<3>(0 + 4 + 3) = generator->getVelocity();
-    msckf->I_a_dly = generator->getIMULinearAcceleration();
-    msckf->I_g_dly = generator->getIMUAngularVelocity();
 
     cameraMeasurements = new CameraMeasurements();
 }

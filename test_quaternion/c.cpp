@@ -29,6 +29,9 @@ int main()
 		Vector3d p1 = q1 * (q2 * p);
 		Vector3d p2 = q1.matrix() * q2.matrix() * p;
 
+		cout << q1.toRotationMatrix() << endl;
+		cout << q1.matrix() << endl;
+
 		cout << p1.transpose() << endl;
 		cout << p2.transpose() << endl;
 	}

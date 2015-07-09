@@ -1,13 +1,11 @@
 #include "odometry.h"
 
-
 void CameraMeasurements::addToFeature(list<CameraMeas_t>::iterator& feature, const Vector2d& p)
 {
-    // Add feature TODO: consider if theis matrix should be made a vector
+    // Add feature 
     MatrixX2d& z = feature->z;
     z.conservativeResize(z.rows() + 1, NoChange);
     z.block<1, 2>(z.rows() - 1, 0) = p;
-    // It is no longer lost
     feature->isLost = false;
 }
 
@@ -20,8 +18,7 @@ list<CameraMeas_t>::iterator CameraMeasurements::addNewFeature(int id)
     newFeature->id = id;
     // lost (well empty)
     newFeature->isLost = true;
-    // no link back to link yet
-    // Return iterator to the new feature
+
     return newFeature;
 }
 
@@ -34,8 +31,8 @@ list<CameraMeas_t>::iterator CameraMeasurements::removeFeature(list<CameraMeas_t
 void CameraMeasurements::addFeatures(const vector<pair<int, Vector2d> >& features)
 {
     // Go through all measurements and mark all of them as lost
-    for ( list<CameraMeas_t>::iterator meas_j = meas.begin(); meas_j != meas.end(); ++meas_j ) {
-        meas_j->isLost = true;
+    for (auto& meas_it: meas) {
+        meas_it.isLost = true;
     }
     for (auto& it : features)
     {
@@ -56,8 +53,10 @@ MSCKF::MSCKF(Calib* cal): Odometry(cal)
     sigma = MatrixXd::Zero(15, 15);
 
     // init delayed measurements
-    I_a_dly = Vector3d(0, 0, 0);
-    I_g_dly = Vector3d(0, 0, 0);
+    I_a_prev = Vector3d(0, 0, 0);
+    I_g_prev = Vector3d(0, 0, 0);
+
+    initialized = false;
 }
 
 Quaterniond MSCKF::getQuaternion()
@@ -87,8 +86,8 @@ void MSCKF::propagate(const Vector3d& I_a_m, const Vector3d& I_g_m, bool propaga
     ** unpack state:
     */
     
-    //[from][to]_q
-
+    // Notation: [from][to]_[q/R]
+    
     // Rotation from inertial to global coordinates
     Quaterniond IG_q(x.segment<4>(0));
     // Position (of inertial frame) in global coordinates
@@ -107,15 +106,22 @@ void MSCKF::propagate(const Vector3d& I_a_m, const Vector3d& I_g_m, bool propaga
     Vector3d I_a = I_a_m - b_a;
     // Gyro
     Vector3d I_g = I_g_m - b_g;
-
+    
+    if (!initialized)
+    {
+        I_a_prev = I_a;
+        I_g_prev = I_g;
+        initialized = true;
+    }
+    
     /*
     ** Propagate IMU
     */
     // Rotation
     Vector4d q0 = Vector4d(0, 0, 0, 1);
-    Vector4d k1 = Omega(I_g_dly) * q0 / 2.0;
-    Vector4d k2 = Omega((I_g_dly + I_g) / 2.0) * (q0 + calib->delta_t / 2.0 * k1) / 2.0;
-    Vector4d k3 = Omega((I_g_dly + I_g) / 2.0) * (q0 + calib->delta_t / 2.0 * k2) / 2.0;
+    Vector4d k1 = Omega(I_g_prev) * q0 / 2.0;
+    Vector4d k2 = Omega((I_g_prev + I_g) / 2.0) * (q0 + calib->delta_t / 2.0 * k1) / 2.0;
+    Vector4d k3 = Omega((I_g_prev + I_g) / 2.0) * (q0 + calib->delta_t / 2.0 * k2) / 2.0;
     Vector4d k4 = Omega(I_g) * (q0 + calib->delta_t * k3) / 2.0;
 
     Quaterniond I1I_q(Vector4d(0, 0, 0, 1) + calib->delta_t / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4));
@@ -126,7 +132,7 @@ void MSCKF::propagate(const Vector3d& I_a_m, const Vector3d& I_g_m, bool propaga
     // Translation
     Vector3d G_a = I1G_q * I_a + G_g;
 
-    Vector3d s = calib->delta_t / 2.0 * (I1I_q * I_a + I_a_dly);
+    Vector3d s = calib->delta_t / 2.0 * (I1I_q * I_a + I_a_prev);
 
     Vector3d y = calib->delta_t / 2.0 * s;
 
@@ -195,8 +201,8 @@ void MSCKF::propagate(const Vector3d& I_a_m, const Vector3d& I_g_m, bool propaga
     /*
     ** update delayed variables
     */
-    I_a_dly = I_a;
-    I_g_dly = I_g;
+    I_a_prev = I_a;
+    I_g_prev = I_g;
 }
 
 // TODO: -Propagate state <- used for pure prediction
@@ -291,10 +297,10 @@ void MSCKF::performUpdate(const VectorXd& delta_x)
         unsigned int frameStart = ODO_STATE_SIZE + i * ODO_STATE_FRAME_SIZE;
         unsigned int delta_frameStart = ODO_SIGMA_SIZE + i * ODO_SIGMA_FRAME_SIZE;
         Quaterniond delta_IiG_q(1,
-                                            delta_x(delta_frameStart + 0) / 2.0,
-                                            delta_x(delta_frameStart + 1) / 2.0,
-                                            delta_x(delta_frameStart + 2) / 2.0
-                                           );
+                                delta_x(delta_frameStart + 0) / 2.0,
+                                delta_x(delta_frameStart + 1) / 2.0,
+                                delta_x(delta_frameStart + 2) / 2.0
+                               );
         Quaterniond IiG_q = delta_IiG_q * Quaterniond(x.block<4, 1>(frameStart + 0, 0));
         IiG_q.normalize();
         x.block<4, 1>(frameStart + 0, 0) = IiG_q.coeffs();

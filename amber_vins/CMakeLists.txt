@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(msckf_vins)
+project(amber_vins)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/CMakeModules/")
 set(CMAKE_CXX_FLAGS "-DNDEBUG -std=c++11 -march=native -O3 -Wall")
@@ -10,19 +10,15 @@ find_package(Eigen REQUIRED)
 find_package(opencv REQUIRED)
 
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES msckf_vins
-#  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
 )
 
 include_directories(
-   include
+   src
    ${Eigen_INCLUDE_DIRS}
    ${opencv_INCLUDE_DIRS}   
 )
 
-add_executable(amber_node
+add_executable(amber_vins_node
   src/main.cpp
   src/odometry.cpp
   src/data_generator.cpp
@@ -31,6 +27,6 @@ add_executable(amber_node
   src/utils.cpp
 )
 
-target_link_libraries(amber_node
+target_link_libraries(amber_vins_node
   ${catkin_LIBRARIES}
 )

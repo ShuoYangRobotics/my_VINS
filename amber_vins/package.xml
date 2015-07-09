@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>msckf_vins</name>
+  <name>amber_vins</name>
   <version>0.0.0</version>
   <description>The msckf_vins package</description>
 

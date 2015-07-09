@@ -81,7 +81,9 @@ public:
     //
     // Local variables for integration
     //
-    Vector3d I_a_dly, I_g_dly;
+    Vector3d I_a_prev, I_g_prev;
+
+    bool initialized;
 
 public:
     MSCKF(Calib* cal);

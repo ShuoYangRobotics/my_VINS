@@ -25,7 +25,7 @@ public:
     static int const FREQ        = 200;
     static int const IMU_PER_IMG = 50;
 
-    static int const MAX_TIME    = 10;
+    static int const MAX_TIME    = 5;
 
     static int const FOV         = 90;
     static int const ROW         = 480;

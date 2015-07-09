@@ -1,5 +1,7 @@
 #include "data_generator.h"
-#define COMPLEX_TRAJECTORY 1
+//#define COMPLEX_TRAJECTORY 1
+//#define SIMPLE_TRAJECTORY 1
+
 //#define WITH_NOISE 1 
 
 DataGenerator::DataGenerator(Calib* _calib): calib(_calib)
@@ -56,6 +58,11 @@ Vector3d DataGenerator::getPosition()
         y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(tt / MAX_TIME * M_PI * 2 * 2);
         z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(tt / MAX_TIME * M_PI * 2);
     }
+#elif SIMPLE_TRAJECTORY
+    double x, y, z;
+    x = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI);
+    y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI * 2 * 2);
+    z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI * 2);
 #else
     double x = 10 * cos(t / 10);
     double y = 10 * sin(t / 10);
@@ -67,15 +74,16 @@ Vector3d DataGenerator::getPosition()
 
 Matrix3d DataGenerator::getRotation()
 {
-#ifdef COMPLEX_TRAJECTORY
+    return (AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitY()) * AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitX())).toRotationMatrix();
 
+#ifdef COMPLEX_TRAJECTORY
     return (AngleAxisd(30.0 / 180 * M_PI * sin(t / MAX_TIME * M_PI * 2), Vector3d::UnitX())
             * AngleAxisd(40.0 / 180 * M_PI * sin(t / MAX_TIME * M_PI * 2), Vector3d::UnitY())
             * AngleAxisd(0, Vector3d::UnitZ())).toRotationMatrix();
-#else
+#elif SIMPLE_TRAJECTORY
     return (AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitY()) * AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitX())).toRotationMatrix();
-    //
-    //return Matrix3d::Identity();
+#else
+    return Matrix3d::Identity();
 #endif
 }
 
@@ -97,15 +105,20 @@ Vector3d DataGenerator::getVelocity()
     }
     else
     {
-        double tt = t - 2 * MAX_TIME;
+        double tt = t -  2 * MAX_TIME;
         dx = MAX_BOX / 2.0 * -sin(tt / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI);
         dy = MAX_BOX / 2.0 * -sin(tt / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
         dz = MAX_BOX / 2.0 * -sin(tt / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
     }
+#elif SIMPLE_TRAJECTORY
+    double dx, dy, dz;
+    dx = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI);
+    dy = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
+    dz = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
 #else
     double dx = - sin(t / 10);
-    double dy =  cos(t / 10);
-    double dz =  0;
+    double dy = cos(t / 10);
+    double dz = 0;
 #endif
     return Vector3d(dx, dy, dz);
 }
@@ -119,10 +132,9 @@ Vector3d DataGenerator::getIMUAngularVelocity()
     t -= delta_t;
     Matrix3d skew = rot.inverse() * drot;
 #ifdef WITH_NOISE
-    calib->
-    Vector3d disturb = Vector3d(distribution(generator) * sqrt(gyr_cov(0, 0)),
-                                distribution(generator) * sqrt(gyr_cov(1, 1)),
-                                distribution(generator) * sqrt(gyr_cov(2, 2))
+    Vector3d disturb = Vector3d(distribution(generator) * calib->sigma_gc),
+                                distribution(generator) * calib->sigma_gc),
+                                distribution(generator) * calib->sigma_gc)
                                );
     return disturb + Vector3d(skew(2, 1), -skew(2, 0), skew(1, 0));
 #else
@@ -153,6 +165,11 @@ Vector3d DataGenerator::getIMULinearAcceleration()
         ddy = MAX_BOX / 2.0 * -cos(tt / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
         ddz = MAX_BOX / 2.0 * -cos(tt / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
     }
+#elif SIMPLE_TRAJECTORY
+    double ddx, ddy, ddz;
+    ddx = MAX_BOX / 2.0 * -cos(t / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI);
+    ddy = MAX_BOX / 2.0 * -cos(t / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
+    ddz = MAX_BOX / 2.0 * -cos(t / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
 #else
     double ddx = -0.1 * cos(t / 10);
     double ddy = -0.1 * sin(t / 10);
