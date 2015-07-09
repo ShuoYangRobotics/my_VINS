@@ -56,7 +56,7 @@ Vector2d DistortCamera::h(Vector3d ptr)
     v = ptr(1)/ptr(2);
     
     r = u*u + v*v;
-    dr = 1 + k1*r*r + k2*powf(r,4) + k3* powf(r, 6);
+    dr = 1 + k1*r + k2 * r* r + k3* r * r * r;
     
     dt(0) = 2*u*v*p1+(r+2*u*u)*p2;
     dt(1) = 2*u*v*p2+(r+2*v*v)*p1;
@@ -101,16 +101,13 @@ MatrixXd DistortCamera::Jh(Vector3d ptr)
     
     r = u*u + v*v;
     
-    dr = 1 + k1*r*r + k2 * powf(r,4) + k3 * powf(r, 6);
+    dr = 1 + k1*r + k2 * r * r + k3 * r * r * r;
     
     dt(0) = 2*u*v*p1+(r+2*u*u)*p2;
     dt(1) = 2*u*v*p2+(r+2*v*v)*p1;
     
-    ddrdx = (4*k1*x*(x2/z2 + y2/z2))/z2 + (8*k2*x*powf(x2/z2 + y2/z2,3))/z2 + (12*k3*x*powf(x2/z2 + y2/z2,5))/z2;
-    ddrdy = (4*k1*y*(x2/z2 + y2/z2))/z2 + (8*k2*y*powf(x2/z2 + y2/z2,3))/z2 + (12*k3*y*powf(x2/z2 + y2/z2,5))/z2;
-    ddrdz = - 4*k2*powf(x2/z2 + y2/z2,3) *
-              ((2*x2)/z3 + (2*y2)/z3) - 6*k3*powf(x2/z2 + y2/z2,5)*((2*x2)/z3 + (2*y2)/z3) - 2*k1*(x2/z2 + y2/z2)*((2*x2)/z3 + (2*y2)/z3);
-    
+    Vector3d Jdr = 2 / z * (k1 + 2 * k2 * r + 3 * k3 * r * r) * Vector3d(u, v, -r);
+
     ddtdx(0) = (6*p2*x)/z2 + (2*p1*y)/z2;
     ddtdx(1) = (2*p1*x)/z2 + (2*p2*y)/z2;
     ddtdy(0) = (2*p1*x)/z2 + (2*p2*y)/z2;
@@ -121,12 +118,12 @@ MatrixXd DistortCamera::Jh(Vector3d ptr)
     
     Jdistort = MatrixXd::Zero(2, 3);
     
-    Jdistort(0,0) =    dr/z + ddrdx*u + ddtdx(0);
-    Jdistort(0,1) =           ddrdy*u + ddtdy(0);
-    Jdistort(0,2) = -dr/z*u + ddrdz*u + ddtdz(0);
-    Jdistort(1,0) =           ddrdx*v + ddtdx(1);
-    Jdistort(1,1) =    dr/z + ddrdy*v + ddtdy(1);
-    Jdistort(1,2) = -dr/z*v + ddrdz*v + ddtdz(1);
+    Jdistort(0,0) =    dr/z + Jdr(0)*u + ddtdx(0);
+    Jdistort(0,1) =           Jdr(1)*u + ddtdy(0);
+    Jdistort(0,2) = -dr/z*u + Jdr(2)*u + ddtdz(0);
+    Jdistort(1,0) =           Jdr(0)*v + ddtdx(1);
+    Jdistort(1,1) =    dr/z + Jdr(1)*v + ddtdy(1);
+    Jdistort(1,2) = -dr/z*v + Jdr(2)*v + ddtdz(1);
     
     J = focus * Jdistort;
     
@@ -136,8 +133,8 @@ MatrixXd DistortCamera::Jh(Vector3d ptr)
 // measure_mtx is 2f
 Vector3d DistortCamera::triangulate(MatrixXd measure_mtx, MatrixXd pose_mtx)
 {
-    std::cout << "measure_mtx is " << std::endl << measure_mtx << std::endl;
-    std::cout << "pose_mtx is " << std::endl<< pose_mtx << std::endl;
+ //   std::cout << "measure_mtx is " << std::endl << measure_mtx << std::endl;
+ //   std::cout << "pose_mtx is " << std::endl<< pose_mtx << std::endl;
     //std::cout << std::endl;
     Vector3d return_pose = Vector3d(0.0f, 0.0f, 0.0f);
     int num_item = (int)pose_mtx.cols();

@@ -364,13 +364,8 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 ptr_pose = cam.triangulate(measure_mtx, pose_mtx_for_tri);
                 //ROS_INFO("I triangulated a point with id %d (%lf, %lf, %lf)", item.first, ptr_pose(0), ptr_pose(1), ptr_pose(2));
                 
-<<<<<<< HEAD
-                if (0)
-                {
-=======
                 // if (0)
                 // {
->>>>>>> 6a656c835ad5c626928704fb8d328ef49bd98499
 
                 // VectorXd ri;
                 // MatrixXd Hi;

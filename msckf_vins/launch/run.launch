@@ -1,0 +1,14 @@
+<launch>
+	<node pkg="msckf_vins" name="msckf_vins" type="msckf_vins_node" output="screen">
+    </node>
+	<node pkg="data_generator" name="data_generator" type="data_generator" output="screen">
+    </node>
+
+<!--    <node pkg="rosbag" type="play" name="player" output="screen" args="--clock /home/me/ros_files/my_file.bag"/> -->
+
+    <node pkg="sensor_processor" name="sensor_processor" type="sensor_processor" output="screen">
+        <rosparam file="$(find sensor_processor)/config/right_25000709.yml"/>
+        <remap from="~input_image" to="/camera/image"/>
+        <remap from="~output_image" to="/sensors/image"/>
+    </node>
+</launch>
