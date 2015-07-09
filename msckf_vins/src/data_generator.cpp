@@ -1,6 +1,6 @@
 #include "data_generator.h"
-
-//#define WITH_NOISE 
+#define PI 3.1415926
+//#define WITH_NOISE 1 
 
 DataGenerator::DataGenerator()
 {
@@ -9,10 +9,9 @@ DataGenerator::DataGenerator()
     current_id = 0;
     for (int i = 0; i < NUM_POINTS; i++)
     {
-        pts[i] = Vector3d(
-            rand() % (6 * MAX_BOX) - 3 * MAX_BOX,
-            rand() % (6 * MAX_BOX) - 3 * MAX_BOX,
-            rand() % (6 * MAX_BOX) - 3 * MAX_BOX);
+        pts[i](0) = rand() % (6 * MAX_BOX) - 3 * MAX_BOX;
+        pts[i](1) = rand() % (6 * MAX_BOX) - 3 * MAX_BOX;
+        pts[i](2) = rand() % (6 * MAX_BOX) - 3 * MAX_BOX;
     }
     R_cb << 0, -1, 0,
             0, 0, 1,
@@ -26,8 +25,8 @@ DataGenerator::DataGenerator()
     //acc_cov << 1.3967e-04, 0, 0,
     //        0, 1.4352e-04, 0,
     //        0, 0, 1.5757e-04;
-    acc_cov = 1e-2 * Matrix3d::Identity();
-    gyr_cov = 1e-4 * Matrix3d::Identity();
+    acc_cov = Matrix3d::Identity();
+    gyr_cov =  Matrix3d::Identity();
 
 
     pts_cov << .1 * .1 / 3.6349576068362910e+02 / 3.6349576068362910e+02, 0,
@@ -56,29 +55,37 @@ Vector3d DataGenerator::getPoint(int i)
 
 Vector3d DataGenerator::getPosition()
 {
-    //double backup = t;
-    //if (t < MAX_TIME)
-    //    t = 0;
-    //else if (t > 2 * MAX_TIME)
-    //    t = 2 * MAX_TIME;
-
-    //double x = pow(t, 3) / pow(MAX_TIME, 3) * MAX_BOX;
-    //double y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * PI * 2 * 2);
-    //double z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * PI * 2);
-    double x = 10 * cos(t/10);
-    double y = 10 * sin(t/10);
-    double z = 3;
+    double x, y, z;
+    if (t < MAX_TIME)
+    {
+        x = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI);
+        y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI * 2 * 2);
+        z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI * 2);
+    }
+    else if (t >= MAX_TIME && t < 2 * MAX_TIME)
+    {
+        x = MAX_BOX / 2.0 - MAX_BOX / 2.0;
+        y = MAX_BOX / 2.0 + MAX_BOX / 2.0;
+        z = MAX_BOX / 2.0 + MAX_BOX / 2.0;
+    }
+    else
+    {
+        double tt = t - 2 * MAX_TIME;
+        x = -MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(tt / MAX_TIME * M_PI);
+        y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(tt / MAX_TIME * M_PI * 2 * 2);
+        z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(tt / MAX_TIME * M_PI * 2);
+    }
 
     return Vector3d(x, y, z);
 }
 
 Matrix3d DataGenerator::getRotation()
 {
-    //return (AngleAxisd(30.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitX())
-    //        * AngleAxisd(40.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitY())
-    //        * AngleAxisd(0, Vector3d::UnitZ())).toRotationMatrix();
-    //return AngleAxisd(30.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitZ()).toRotationMatrix();
-    return Matrix3d::Identity();
+    return (AngleAxisd(30.0 / 180 * M_PI * sin(t / MAX_TIME * M_PI * 2), Vector3d::UnitX())
+            * AngleAxisd(40.0 / 180 * M_PI * sin(t / MAX_TIME * M_PI * 2), Vector3d::UnitY())
+            * AngleAxisd(0, Vector3d::UnitZ())).toRotationMatrix();
+    //return AngleAxisd(0.0+10.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitZ()).toRotationMatrix();
+    // return Matrix3d::Identity();
 }
 
 Vector3d DataGenerator::getAngularVelocity()
@@ -102,32 +109,60 @@ Vector3d DataGenerator::getAngularVelocity()
 
 Vector3d DataGenerator::getVelocity()
 {
-    //double dx = 3 * pow(t, 2) / pow(MAX_TIME, 3) * MAX_BOX;
-    //double dy = MAX_BOX / 2.0 * -sin(t / MAX_TIME * PI * 2 * 2) * (1.0 / MAX_TIME * PI * 2 * 2);
-    //double dz = MAX_BOX / 2.0 * -sin(t / MAX_TIME * PI * 2) * (1.0 / MAX_TIME * PI * 2);
-    double dx = -sin(t/10);
-    double dy =  cos(t/10);
-    double dz =  0;
+    double dx, dy, dz;
+    if (t < MAX_TIME)
+    {
+        dx = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI);
+        dy = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
+        dz = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
+    }
+    else if (t >= MAX_TIME && t < 2 * MAX_TIME)
+    {
+        dx = 0.0;
+        dy = 0.0;
+        dz = 0.0;
+    }
+    else
+    {
+        double tt = t - 2 * MAX_TIME;
+        dx = MAX_BOX / 2.0 * -sin(tt / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI);
+        dy = MAX_BOX / 2.0 * -sin(tt / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
+        dz = MAX_BOX / 2.0 * -sin(tt / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
+    }
 
     return getRotation().inverse() * Vector3d(dx, dy, dz);
 }
 
 Vector3d DataGenerator::getLinearAcceleration()
 {
-    //double ddx = 2 * 3 * pow(t, 1) / pow(MAX_TIME, 3) * MAX_BOX;
-    //double ddy = MAX_BOX / 2.0 * -cos(t / MAX_TIME * PI * 2 * 2) * (1.0 / MAX_TIME * PI * 2 * 2) * (1.0 / MAX_TIME * PI * 2 * 2);
-    //double ddz = MAX_BOX / 2.0 * -cos(t / MAX_TIME * PI * 2) * (1.0 / MAX_TIME * PI * 2) * (1.0 / MAX_TIME * PI * 2);
-    double ddx = -0.1*cos(t/10);
-    double ddy = -0.1*sin(t/10);
-    double ddz = 0;
-#ifdef WITH_NOISE
+    double ddx, ddy, ddz;
+    if (t < MAX_TIME)
+    {
+        ddx = MAX_BOX / 2.0 * -cos(t / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI);
+        ddy = MAX_BOX / 2.0 * -cos(t / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
+        ddz = MAX_BOX / 2.0 * -cos(t / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
+    }
+    else if (t >= MAX_TIME && t < 2 * MAX_TIME)
+    {
+        ddx = 0.0;
+        ddy = 0.0;
+        ddz = 0.0;
+    }
+    else
+    {
+        double tt = t - 2 * MAX_TIME;
+        ddx = MAX_BOX / 2.0 * -cos(tt / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI);
+        ddy = MAX_BOX / 2.0 * -cos(tt / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
+        ddz = MAX_BOX / 2.0 * -cos(tt / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
+    }
+#if WITH_NOISE
     Vector3d disturb = Vector3d(distribution(generator) * sqrt(acc_cov(0, 0)),
                                 distribution(generator) * sqrt(acc_cov(1, 1)),
                                 distribution(generator) * sqrt(acc_cov(2, 2))
                                );
-    return getRotation().inverse() * (disturb + Vector3d(ddx, ddy, ddz + 9.8));
+    return getRotation().inverse() * (disturb + Vector3d(ddx, ddy, ddz - 9.8));
 #else
-    return getRotation().inverse() * Vector3d(ddx, ddy, ddz + 9.8);
+    return getRotation().inverse() * Vector3d(ddx, ddy, ddz - 9.8);
 #endif
 }
 
@@ -155,18 +190,18 @@ vector<pair<int, Vector3d>> DataGenerator::getImage()
             //int n_id = before_feature_id.find(i) == before_feature_id.end() ?
             //           current_id++ : before_feature_id[i];
             int n_id = i;
-//#if WITH_NOISE
-//            Vector3d disturb = Vector3d(distribution(generator) * sqrt(pts_cov(0, 0)) / zz / zz,
-//                                        distribution(generator) * sqrt(pts_cov(1, 1)) / zz / zz,
-//                                        0
-//                                       );
-//            image.push_back(make_pair(n_id, disturb + Vector3d(xx / zz, yy / zz, 1)));
-//#else
+#if WITH_NOISE
+           Vector3d disturb = Vector3d(distribution(generator) * sqrt(pts_cov(0, 0)) / zz / zz,
+                                       distribution(generator) * sqrt(pts_cov(1, 1)) / zz / zz,
+                                       0
+                                      );
+           image.push_back(make_pair(n_id, disturb + Vector3d(xx / zz, yy / zz, 1)));
+#else
             image.push_back(make_pair(n_id, local_point));
             // printf("feature id: %d, p_gf: [%f, %f, %f], p_cf: [%f, %f, %f]\n",
             //        n_id, pts[i](0), pts[i](1), pts[i](2), local_point(0), local_point(1), local_point(2));
 
-//#endif
+#endif
             current_feature_id[i] = n_id;
         }
     }

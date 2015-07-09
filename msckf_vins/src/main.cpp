@@ -233,17 +233,7 @@ int main(int argc, char **argv)
     path.header.frame_id = "world";
 
     // init MSCKF
-    Vector4d init_q(0.0, 0.0, 0.0, 1.0);  // x y z w
-    Vector3d init_p(10.0, 0.0, 3.0);
-    Vector3d init_v(0.0, 1.0, 0.0);
-    Vector3d init_bg(0.0 ,0.0, 0.0);
-    Vector3d init_ba(0.0 ,0.0, 0.0);
-    Vector3d init_pcb(-0.14, -0.02, 0.0);
-    my_kf.setCalibParam(init_pcb, 365.07984, 365.12127, 381.0196, 254.4431,
-                            -2.842958e-1, 8.7155025e-2, -1.4602925e-4, -6.149638e-4, -1.218237e-2);
-    my_kf.setNominalState(init_q, init_p, init_v, init_bg, init_ba);
-    my_kf.setMeasureNoise(17.0);
-    my_kf.setNoiseMatrix(0.0, 0.0, 0.0, 0.0);
+    bool inited = false;
 
     DataGenerator generator;
     ros::Rate loop_rate(generator.FREQ);
@@ -278,6 +268,21 @@ int main(int argc, char **argv)
         Vector3d velocity     = generator.getVelocity();
         Matrix3d rotation     = generator.getRotation();
         Quaterniond q(rotation);
+        if (inited == false)
+        {
+                Vector4d init_q(q.x(), q.y(), q.z(), q.w());  // x y z w
+                Vector3d init_p(position(0), position(1), position(2));
+                Vector3d init_v(velocity(0), velocity(1), velocity(2));    
+                Vector3d init_bg(0.0 ,0.0, 0.0);
+                Vector3d init_ba(0.0 ,0.0, 0.0);
+                Vector3d init_pcb(-0.14, -0.02, 0.0);
+                my_kf.setNominalState(init_q, init_p, init_v, init_bg, init_ba);
+                my_kf.setCalibParam(init_pcb, 365.07984, 365.12127, 381.0196, 254.4431,
+                                        -2.842958e-1, 8.7155025e-2, -1.4602925e-4, -6.149638e-4, -1.218237e-2);
+
+                my_kf.setMeasureNoise(10.0);
+                my_kf.setNoiseMatrix(1.0, 3.5, 3.5, 1.0);
+        }
 
         Vector3d linear_acceleration = generator.getLinearAcceleration();
         Vector3d angular_velocity = generator.getAngularVelocity();

@@ -138,6 +138,7 @@ Vector3d DistortCamera::triangulate(MatrixXd measure_mtx, MatrixXd pose_mtx)
 {
     std::cout << "measure_mtx is " << std::endl << measure_mtx << std::endl;
     std::cout << "pose_mtx is " << std::endl<< pose_mtx << std::endl;
+    //std::cout << std::endl;
     Vector3d return_pose = Vector3d(0.0f, 0.0f, 0.0f);
     int num_item = (int)pose_mtx.cols();
     
@@ -213,7 +214,7 @@ Vector3d DistortCamera::triangulate(MatrixXd measure_mtx, MatrixXd pose_mtx)
     MatrixXd Ji;
     MatrixXd A;
     MatrixXd b;
-    for (int itr = 0; itr < 1000; itr++)
+    for (int itr = 0; itr < 100; itr++)
     {
         Vector3d tmp_theta = Vector3d(theta(0), theta(1), 1);
         for (int i = 0; i < num_item; i++)

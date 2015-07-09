@@ -362,7 +362,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                 }
                 
                 ptr_pose = cam.triangulate(measure_mtx, pose_mtx_for_tri);
-                ROS_INFO("I triangulated a point with id %d (%lf, %lf, %lf)", item.first, ptr_pose(0), ptr_pose(1), ptr_pose(2));
+                //ROS_INFO("I triangulated a point with id %d (%lf, %lf, %lf)", item.first, ptr_pose(0), ptr_pose(1), ptr_pose(2));
                 
 <<<<<<< HEAD
                 if (0)
@@ -396,6 +396,7 @@ void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)
                         is_valid = false;
                     }
                 }
+                ROS_INFO("I triangulated a point with id %d (%lf, %lf, %lf)", item.first, ptr_pose(0), ptr_pose(1), ptr_pose(2));
                 
                 //cout << "I triangulate: " << ptr_pose << endl;
                 
@@ -810,7 +811,7 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
         cout << "estimat is " << projPtr.transpose() << endl;
         ri.segment(j * 2, 2) = measure.col(j) - projPtr;
         // cout << "ri piece is" << ri.segment(j * 2, 2)  <<endl;
-        if (ri.segment(j * 2, 2).norm() > 0.5)
+        if (ri.segment(j * 2, 2).norm() > 2.0)
         {
             return false;
         }
@@ -863,7 +864,20 @@ bool MSCKF::getResidualH(VectorXd& ri, MatrixXd& Hi, Vector3d feature_pose, Matr
    // printf("ri size (%d, %d)\n", ri.rows(), ri.cols());
    // printf("Hi size (%d, %d)\n", Hi.rows(), Hi.cols());
 
-    return true;
+   double gamma;
+   MatrixXd tmpK = Hi * fullErrorCovariance * Hi.transpose();
+   MatrixXd tmpKinv = tmpK.colPivHouseholderQr().solve(MatrixXd::Identity(tmpK.rows(), tmpK.cols()));
+
+   int k = ri.size();
+   gamma = fabs(ri.dot( tmpKinv * ri));
+   cout << "gamma " << gamma<< endl;
+
+   // cout << "ha? " <<  fabs(ri.dot( Hi *Hi.transpose()* ri))<< endl;
+   if (k>30) k = 30;
+   if (gamma*gamma > chi_test[k])
+        return false;
+    else
+        return true;
 }
 
 
