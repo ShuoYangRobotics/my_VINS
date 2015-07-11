@@ -16,7 +16,7 @@ using namespace Eigen;
 class DataGenerator
 {
 public:
-    static int const NUM_POINTS  = 200;
+    static int const NUM_POINTS  = 2000;
     static int const MAX_BOX     = 10;
     static int const RANGE1      = 15;
     static int const RANGE2      = 25;

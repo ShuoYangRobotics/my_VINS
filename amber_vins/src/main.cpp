@@ -284,7 +284,7 @@ void setup()
     calib->sigma_wgc = 0.1;
     calib->sigma_wac = 0.1; 
 
-    calib->sigma_Im = 30;
+    calib->sigma_Im = 100;
 
     calib->maxFrame = 5;
     calib->minFrame = 3;

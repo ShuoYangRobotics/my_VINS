@@ -1,5 +1,5 @@
 #include "data_generator.h"
-//#define COMPLEX_TRAJECTORY 1
+#define COMPLEX_TRAJECTORY 1
 //#define SIMPLE_TRAJECTORY 1
 
 //#define WITH_NOISE 
@@ -81,7 +81,7 @@ Vector3d DataGenerator::getPosition()
 
 Matrix3d DataGenerator::getRotation()
 {
-    return (AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitY()) * AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitX())).toRotationMatrix();
+//    return (AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitY()) * AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitX())).toRotationMatrix();
 //    return Matrix3d::Identity();
 
 #ifdef COMPLEX_TRAJECTORY

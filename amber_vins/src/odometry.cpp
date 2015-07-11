@@ -399,12 +399,12 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
                 double r_norm;
                 Vector3d G_p_f = calib->camera.triangulate(CG_q, G_p_C, meas_j->z, &r_norm);
 
-                if (r_norm < 10)
+                if (r_norm < 100)
                 {
-                    cout << "r_norm: " << r_norm << endl;
-                    cout << "feature id: " << meas_j->id << endl;
-                    cout << "G_z_f:" << endl << meas_j->z << endl;
-                    cout << "G_p_f:" << G_p_f.transpose() << endl;
+                    // cout << "r_norm: " << r_norm << endl;
+                    // cout << "feature id: " << meas_j->id << endl;
+                    // cout << "G_z_f:" << endl << meas_j->z << endl;
+                    // cout << "G_p_f:" << G_p_f.transpose() << endl;
 
                     // If not a clear outlier:
                     if (isfinite(G_p_f(0)) && isfinite(G_p_f(1)) && isfinite(G_p_f(2))) {
@@ -417,7 +417,7 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
                         
 
                         // TODO: Check if inlier
-                        cout << "marginalize" << endl;
+                        // cout << "marginalize" << endl;
 
                         if (isInlinerCamera(r0j, H0j)) {
                             //cout << r0j << endl;
@@ -457,19 +457,19 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
 
         // Kalman gain
         MatrixXd K = sigma * H0.transpose() * (H0 * sigma * H0.transpose() + R_q).inverse();
-        cout << "r0: " << r0 << endl;
+        // cout << "r0: " << r0 << endl;
 
-        cout << "eigen of sigma " << endl;
-        isPositiveDefinite(sigma, true);
+        // cout << "eigen of sigma " << endl;
+        // isPositiveDefinite(sigma, true);
 
-        cout << "eigen of H0 * H0.transpose() " << endl;
-        isPositiveDefinite(H0 * H0.transpose(), true);
+        // cout << "eigen of H0 * H0.transpose() " << endl;
+        // isPositiveDefinite(H0 * H0.transpose(), true);
 
-        cout << "eigen of H0 * sigma * H0.transpose()" << endl;
-        isPositiveDefinite(H0 * sigma * H0.transpose(), true);
+        // cout << "eigen of H0 * sigma * H0.transpose()" << endl;
+        // isPositiveDefinite(H0 * sigma * H0.transpose(), true);
 
-        cout << "eigen of H0 * sigma * H0.transpose() inverse" << endl;
-        isPositiveDefinite((H0 * sigma * H0.transpose()).inverse(), true);
+        // cout << "eigen of H0 * sigma * H0.transpose() inverse" << endl;
+        // isPositiveDefinite((H0 * sigma * H0.transpose()).inverse(), true);
 
 
 //        cout << "H0: " << H0 << endl;
@@ -489,7 +489,7 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
         this->performUpdate(delta_x);
 
 //        cout << "sigma" << endl << sigma << endl;
-        cout << "delta_x: " << endl << delta_x.transpose() << endl;
+//        cout << "delta_x: " << endl << delta_x.transpose() << endl;
 
 //        abort();
 
