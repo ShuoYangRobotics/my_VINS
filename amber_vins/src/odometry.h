@@ -7,11 +7,6 @@
 #include <map>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/video/tracking.hpp>
-#include <opencv2/calib3d/calib3d.hpp>
 
 #include "calib.h"
 #include "utils.h"
@@ -29,7 +24,7 @@ using namespace std;
 typedef struct
 {
     int id;
-    MatrixX2d z; // length is stored as number of elements in z
+    Matrix2Xd z; // length is stored as number of elements in z
     bool isLost; // Set if it is no longer tracked in current frame
                  // TODO: add feature description here?
 } CameraMeas_t;
@@ -46,7 +41,7 @@ public:
     void addToFeature(list<CameraMeas_t>::iterator& feature, const Vector2d& p);
     list<CameraMeas_t>::iterator addNewFeature(int id);
     list<CameraMeas_t>::iterator removeFeature(list<CameraMeas_t>::iterator& feature);
-    void addFeatures(const vector<pair<int, Vector2d> >& features);
+    void addFeatures(const vector<pair<int, Vector2d>>& features);
 };
 
 /***
@@ -96,8 +91,8 @@ public:
     void updateCamera(CameraMeasurements& cameraMeasurements);
     void augmentState(void);
     void removeOldStates(int n);
-    Vector3d triangulate(MatrixX2d z);
-    void marginalize(const MatrixX2d& z, const Vector3d& G_p_f, Ref<VectorXd> r0, Ref<MatrixXd> H0);
+
+    void marginalize(const Matrix2Xd& z, const Vector3d& G_p_f, Ref<VectorXd> r0, Ref<MatrixXd> H0);
     bool isInlinerCamera(const VectorXd& r0, const MatrixXd& H0);
     void performUpdate(const VectorXd& delta_x);
 

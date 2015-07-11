@@ -4,17 +4,20 @@
 
 //#define WITH_NOISE 1 
 
+Vector3d DataGenerator::generatePoint()
+{
+    return Vector3d(rand() % (6 * MAX_BOX) - 3 * MAX_BOX,
+                    rand() % (6 * MAX_BOX) - 3 * MAX_BOX,
+                    rand() % (6 * MAX_BOX) - 3 * MAX_BOX);
+}
+
 DataGenerator::DataGenerator(Calib* _calib): calib(_calib)
 {
     srand(0);
     t = 0;
     current_id = 0;
     for (int i = 0; i < NUM_POINTS; i++)
-    {
-        pts[i](0) = rand() % (6 * MAX_BOX) - 3 * MAX_BOX;
-        pts[i](1) = rand() % (6 * MAX_BOX) - 3 * MAX_BOX;
-        pts[i](2) = rand() % (6 * MAX_BOX) - 3 * MAX_BOX;
-    }
+        pts[i] = generatePoint();
     random_generator = default_random_engine(0);
     distribution = normal_distribution<double>(0, 1);
 }
@@ -29,6 +32,11 @@ double DataGenerator::getTime()
     return t;
 }
 
+void DataGenerator::setTime(double _t)
+{
+    t = _t;
+}
+
 Vector3d DataGenerator::getPoint(int i)
 {
     return pts[i];
@@ -36,7 +44,6 @@ Vector3d DataGenerator::getPoint(int i)
 
 Vector3d DataGenerator::getPosition()
 {
-
 #ifdef COMPLEX_TRAJECTORY
     double x, y, z;
     if (t < MAX_TIME)
@@ -74,7 +81,8 @@ Vector3d DataGenerator::getPosition()
 
 Matrix3d DataGenerator::getRotation()
 {
-    return (AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitY()) * AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitX())).toRotationMatrix();
+//    return (AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitY()) * AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitX())).toRotationMatrix();
+    return Matrix3d::Identity();
 
 #ifdef COMPLEX_TRAJECTORY
     return (AngleAxisd(30.0 / 180 * M_PI * sin(t / MAX_TIME * M_PI * 2), Vector3d::UnitX())
@@ -197,7 +205,7 @@ vector<pair<int, Vector2d>> DataGenerator::getImage()
 
     for (int i = 0; i < NUM_POINTS; i++)
     {
-        Vector3d C_p_f = calib->CI_q.matrix().transpose() * GI_R * (pts[i] - position) + calib->C_p_I;
+        Vector3d C_p_f = calib->CI_q.toRotationMatrix().transpose() * GI_R * (pts[i] - position) + calib->C_p_I;
         Vector2d C_z_f = calib->camera.cameraProject(C_p_f);
 
         if (abs(atan2(C_p_f(0), C_p_f(2))) <= M_PI * FOV / 2 / 180

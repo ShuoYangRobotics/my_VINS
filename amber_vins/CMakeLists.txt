@@ -1,25 +1,24 @@
-cmake_minimum_required(VERSION 2.8.3)
-project(amber_vins)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.3)
+PROJECT(amber_vins)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/CMakeModules/")
-set(CMAKE_CXX_FLAGS "-DNDEBUG -std=c++11 -march=native -O3 -Wall")
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/CMakeModules/")
+SET(CMAKE_CXX_FLAGS "-DNDEBUG -std=c++11 -march=native -O3 -Wall")
 #SET(CMAKE_BUILD_TYPE Debug)
 
-find_package(catkin REQUIRED COMPONENTS roscpp std_msgs geometry_msgs nav_msgs cv_bridge tf)
-find_package(Eigen REQUIRED)
-find_package(opencv REQUIRED)
+FIND_PACKAGE(catkin REQUIRED COMPONENTS roscpp std_msgs geometry_msgs nav_msgs cv_bridge tf)
+FIND_PACKAGE(Eigen REQUIRED)
+FIND_PACKAGE(OpenCv REQUIRED)
 
-catkin_package(
+CATKIN_PACKAGE(
 )
 
-include_directories(
+INCLUDE_DIRECTORIES(
    src
    ${Eigen_INCLUDE_DIRS}
-   ${opencv_INCLUDE_DIRS}   
+   ${OpenCv_INCLUDE_DIRS}
 )
 
-add_executable(amber_vins_node
-  src/main.cpp
+LIST(APPEND SOURCEFILES
   src/odometry.cpp
   src/data_generator.cpp
   src/calib.cpp
@@ -27,6 +26,19 @@ add_executable(amber_vins_node
   src/utils.cpp
 )
 
-target_link_libraries(amber_vins_node
+ADD_EXECUTABLE(amber_vins_node
+  src/main.cpp
+  ${SOURCEFILES}
+)
+
+TARGET_LINK_LIBRARIES(amber_vins_node
   ${catkin_LIBRARIES}
 )
+
+catkin_add_gtest(test_camera 
+  test/test_camera.cpp 
+  ${SOURCEFILES}) 
+
+target_link_libraries(test_camera 
+  ${catkin_LIBRARIES} 
+  ${OpenCv_LIBS})

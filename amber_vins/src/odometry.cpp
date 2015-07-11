@@ -3,9 +3,9 @@
 void CameraMeasurements::addToFeature(list<CameraMeas_t>::iterator& feature, const Vector2d& p)
 {
     // Add feature 
-    MatrixX2d& z = feature->z;
-    z.conservativeResize(z.rows() + 1, NoChange);
-    z.block<1, 2>(z.rows() - 1, 0) = p;
+    Matrix2Xd& z = feature->z;
+    z.conservativeResize(NoChange, z.cols() + 1);
+    z.rightCols<1>() = p;
     feature->isLost = false;
 }
 
@@ -14,7 +14,7 @@ list<CameraMeas_t>::iterator CameraMeasurements::addNewFeature(int id)
     // Add a new entry
     CameraMeas_t z;
     list<CameraMeas_t>::iterator newFeature = meas.insert(meas.begin(), z);
-    newFeature->z = MatrixX2d(0, 2);
+    newFeature->z = Matrix2Xd(2, 0);
     newFeature->id = id;
     // lost (well empty)
     newFeature->isLost = true;
@@ -28,13 +28,13 @@ list<CameraMeas_t>::iterator CameraMeasurements::removeFeature(list<CameraMeas_t
     return meas.erase(feature);
 }
 
-void CameraMeasurements::addFeatures(const vector<pair<int, Vector2d> >& features)
+void CameraMeasurements::addFeatures(const vector<pair<int, Vector2d>>& features)
 {
     // Go through all measurements and mark all of them as lost
     for (auto& meas_it: meas) {
         meas_it.isLost = true;
     }
-    for (auto& it : features)
+    for (auto& it: features)
     {
         if (link.find(it.first) == link.end())
             link[it.first] = addNewFeature(it.first);
@@ -50,7 +50,7 @@ MSCKF::MSCKF(Calib* cal): Odometry(cal)
     // init quaternion
     x.segment<4>(0) = Quaterniond(1, 0, 0, 0).coeffs();
     // init state to known
-    sigma = MatrixXd::Zero(15, 15);
+    sigma = MatrixXd::Identity(15, 15);
 
     // init delayed measurements
     I_a_prev = Vector3d(0, 0, 0);
@@ -87,7 +87,7 @@ void MSCKF::propagate(const Vector3d& I_a_m, const Vector3d& I_g_m, bool propaga
     */
     
     // Notation: [from][to]_[q/R]
-    
+
     // Rotation from inertial to global coordinates
     Quaterniond IG_q(x.segment<4>(0));
     // Position (of inertial frame) in global coordinates
@@ -193,6 +193,10 @@ void MSCKF::propagate(const Vector3d& I_a_m, const Vector3d& I_g_m, bool propaga
     N_c = N_c_diag.asDiagonal();
     Q_d = calib->delta_t / 2.0 * Phi_I * N_c * Phi_I.transpose() + N_c;
 
+    // cout << Phi_I << endl;
+    // cout << sigma << endl;
+    // cout << "Phi_I * sigma * Phi_I^T" << endl << Phi_I * sigma.block<15, 15>(0, 0) * Phi_I.transpose() << endl;
+
     // do the update
     sigma.block<15, 15>(0, 0) = Phi_I * sigma.block<15, 15>(0, 0) * Phi_I.transpose() + Q_d;
     sigma.block(0, 15, 15, sigma.cols() - 15) = Phi_I * sigma.block(0, 15, 15, sigma.cols() - 15);
@@ -293,7 +297,8 @@ void MSCKF::performUpdate(const VectorXd& delta_x)
     x.block<3, 1>(0 + 4 + 3 + 3 + 3, 0) += delta_x.block<3, 1>(0 + 3 + 3 + 3 + 3, 0);
 
     // to all the frames
-    for (int i = 0; i < (x.rows() - ODO_STATE_SIZE) / ODO_STATE_FRAME_SIZE; i++) {
+    for (int i = 0; i < (x.rows() - ODO_STATE_SIZE) / ODO_STATE_FRAME_SIZE; i++) 
+    {
         unsigned int frameStart = ODO_STATE_SIZE + i * ODO_STATE_FRAME_SIZE;
         unsigned int delta_frameStart = ODO_SIGMA_SIZE + i * ODO_SIGMA_FRAME_SIZE;
         Quaterniond delta_IiG_q(1,
@@ -327,27 +332,59 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
     //
     unsigned int longestLiving = 0;
     for (list<CameraMeas_t>::iterator meas_j = cameraMeasurements.meas.begin(); meas_j != cameraMeasurements.meas.end();) {
+
         // Enforce maximum age of features. TODO: figure out if this is really the best way
-        if ((meas_j->z.rows() >= calib->maxFrame)) {
+        if (!meas_j->isLost && (meas_j->z.cols() >= calib->maxFrame)) 
+        {
             meas_j->isLost = true;
-            meas_j->z.conservativeResize(meas_j->z.rows() - 1, NoChange);
+            meas_j->z.conservativeResize(NoChange, meas_j->z.cols() - 1);
         }
+
+        unsigned int n = meas_j->z.cols();
+
         if (meas_j->isLost) {
             // If more that, or 3 points, use for update
-            if (meas_j->z.rows() >= 3) {
-                Vector3d G_p_fj = this->triangulate(meas_j->z);
+            if (n >= 3) {
+                Matrix4Xd CG_q(4, n);
+                Matrix3Xd G_p_C(3, n);
+                
+                for (int i = 0; i < n; i++) 
+                {
+                    unsigned int frameStart = x.rows() - ODO_STATE_FRAME_SIZE * (n - i + 1);
+                    // Get inertial frame state at that time:
+                    Quaterniond IiG_q(x.block<4, 1>(frameStart + 0, 0));
+                    Quaterniond CiG_q = IiG_q * calib->CI_q;
+                    // Calculate camera state
+                    Vector3d G_p_Ii = x.block<3, 1>(frameStart + 4, 0);
+                    Vector3d G_p_Ci = G_p_Ii - CiG_q * calib->C_p_I;
 
-                cout << "f" << meas_j->id << endl;
-                cout << meas_j->z << endl;
+                    CG_q.col(i) = CiG_q.coeffs();
+                    G_p_C.col(i) = G_p_Ci;
+                }
+
+                Vector3d G_p_f = calib->camera.triangulate(CG_q, G_p_C, meas_j->z);
+
+                cout << "feature id: " << meas_j->id << endl;
+                cout << "G_z_f:" << endl << meas_j->z << endl;
+                cout << "G_p_f:" << G_p_f.transpose() << endl;
+
                 // If not a clear outlier:
-                if (isfinite(G_p_fj(0)) && isfinite(G_p_fj(1)) && isfinite(G_p_fj(2))) {
+                if (isfinite(G_p_f(0)) && isfinite(G_p_f(1)) && isfinite(G_p_f(2))) {
 
+                    cout << sigma << endl;
                     // Marignalize:
-                    VectorXd r0j = VectorXd(meas_j->z.rows() * 2 - 3);
-                    MatrixXd H0j = MatrixXd(meas_j->z.rows() * 2 - 3, sigma.cols());
-                    this->marginalize(meas_j->z, G_p_fj, r0j, H0j);
+                    VectorXd r0j = VectorXd(n * 2 - 3);
+                    MatrixXd H0j = MatrixXd(n * 2 - 3, sigma.cols());
+                    this->marginalize(meas_j->z, G_p_f, r0j, H0j);
+                    
+
                     // TODO: Check if inlier
-                    if (isInlinerCamera(r0j, H0j)) {
+                    cout << "marginalize" << endl;
+
+                    if (r0j.norm() < 10 && isInlinerCamera(r0j, H0j)) {
+                        //cout << r0j << endl;
+                        //cout << H0j << endl;
+
                         // Add to huge H0 and r0 matrix
                         H0.conservativeResize(H0.rows() + H0j.rows(), NoChange);
                         r0.conservativeResize(r0.rows() + r0j.rows(), NoChange);
@@ -360,7 +397,7 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
             meas_j = cameraMeasurements.removeFeature(meas_j);
         } else {
             // Set longest living
-            longestLiving = (meas_j->z.rows() > longestLiving) ? meas_j->z.rows() : longestLiving;
+            longestLiving = (n > longestLiving) ? n : longestLiving;
             // Skip and advance
             ++meas_j;
         }
@@ -373,16 +410,20 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
     // Calculate kalmangain and apply update
     //
     // Only if we have measurements
-    if (r0.rows() > 0) {
+    if (r0.rows() > 0) 
+    {
+        cout << "r0.rows():" << r0.rows() <<  endl;
         // Image noise
         MatrixXd R_q = MatrixXd::Identity(r0.rows(), r0.rows()) * calib->sigma_Im * calib->sigma_Im;
 
         // Kalman gain
         MatrixXd K = sigma * H0.transpose() * (H0 * sigma * H0.transpose() + R_q).inverse();
-        //cout << "r0: " << r0 << endl;
-        //cout << "K: " << K << endl;
+        cout << "r0: " << r0 << endl;
+        cout << "K: " << K << endl;
         // Update to be appled to state
         VectorXd delta_x = K * r0;
+
+//        cout << "sigma" << endl << sigma << endl;
 
         // Update covariance
         MatrixXd A = MatrixXd::Identity(K.rows(), H0.cols()) - K * H0;
@@ -392,6 +433,11 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
         // apply feedback
         //
         this->performUpdate(delta_x);
+
+//        cout << "sigma" << endl << sigma << endl;
+        cout << "delta_x: " << endl << delta_x.transpose() << endl;
+
+        //abort();
     }
 
     //
@@ -411,93 +457,23 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
     this->removeOldStates((x.rows() - ODO_STATE_SIZE) / ODO_STATE_FRAME_SIZE - longestLiving);
 }
 
-// Vector3d MSCKF::triangulate(MatrixX2d z)
-// {
-
-// }
-//  triangulate
-Vector3d MSCKF::triangulate(MatrixX2d z)
-{
-    unsigned int iterations = 3;
-
-    //
-    // Get estimate of world feature for each measurement
-    //
-    MatrixX3d G_p_fi(z.rows(), 3);
-    bool clearOutlier = false;
-    for (int i = 0; i < z.rows(); i ++) {
-        //
-        // undistort r to get beta = (u,v)
-        //
-        // initial guess:
-        Vector2d beta(
-            (z(i, 0) - calib->camera.ox) / calib->camera.fx,
-            (z(i, 1) - calib->camera.oy) / calib->camera.fy
-        );
-
-        // iterate:
-        for (int j = 0; j < iterations; j++) {
-            // Residual
-            Vector2d r = z.row(i).transpose() - calib->camera.cameraProject(Vector3d(beta(0), beta(1), 1));
-            // Jacobian
-            Matrix2d Jf = calib->camera.jacobianH(Vector3d(beta(0), beta(1), 1)).block<2, 2>(0, 0);
-            // New estimate
-            beta = beta + (Jf.transpose() * Jf).inverse() * Jf.transpose() * r;
-        }
-
-        //
-        // calculate camera position:
-        //
-        // Get index of start of this frame in state
-        unsigned int frameStart = x.rows() - ODO_STATE_FRAME_SIZE * (z.rows() - i + 1);
-        // Get inertial frame state at that time:
-        Quaterniond IiG_q(x.block<4, 1>(frameStart + 0, 0));
-        Quaterniond CiG_q = IiG_q * calib->CI_q;
-        // Calculate camera state
-        Vector3d G_p_Ii = x.block<3, 1>(frameStart + 4, 0);
-        Vector3d G_p_Ci = G_p_Ii - CiG_q * calib->C_p_I;
-
-        // Calculate feature position estimate
-        Vector3d Ci_theta_i(beta(0), beta(1), 1);
-        Vector3d G_theta_i = CiG_q * Ci_theta_i;
-        double t_i = - G_p_Ci(2) / G_theta_i(2);
-        G_p_fi.row(i) = (t_i * G_theta_i + G_p_Ci).transpose();
-
-        // Check if feature position is estimated behind camera
-        if (t_i <= 0)
-            clearOutlier = true;
-    }
-
-    //
-    // Average estimates
-    //
-    Vector3d G_p_f(G_p_fi.col(0).mean(), G_p_fi.col(1).mean(), G_p_fi.col(2).mean());
-
-    //
-    // Signal no solution
-    //
-    if (!isfinite(G_p_f(0)) || !isfinite(G_p_f(0)) || !isfinite(G_p_f(0)) || clearOutlier)
-        G_p_f = Vector3d(NAN, NAN, NAN);
-
-    return G_p_f;
-}
-
 // -marginalize
-void MSCKF::marginalize(const MatrixX2d& z, const Vector3d& G_p_f, Ref<VectorXd> r0, Ref<MatrixXd> H0)
+void MSCKF::marginalize(const Matrix2Xd& z, const Vector3d& G_p_f, Ref<VectorXd> r0, Ref<MatrixXd> H0)
 {
     //
     // calculate residuals and
     //
-    VectorXd r(z.rows() * 2);
-    MatrixX3d H_f(z.rows() * 2 , 3);
-    MatrixXd H_x = MatrixXd::Zero(z.rows() * 2, sigma.cols());
+    unsigned int n = z.cols();
+    VectorXd r(n * 2);
+    MatrixX3d H_f(n * 2, 3);
+    MatrixXd H_x = MatrixXd::Zero(n * 2, sigma.cols());
 
-    for (int i = 0; i < z.rows(); i ++) {
+    for (int i = 0; i < n; i ++) {
         //
         // calculate camera position:
         //
         // Get index of start of this frame in state
-        unsigned int frameStart = x.rows() - ODO_STATE_FRAME_SIZE * (z.rows() - i + 1);
+        unsigned int frameStart = x.rows() - ODO_STATE_FRAME_SIZE * (n - i + 1);
         // Get inertial frame state at that time:
         Quaterniond IiG_q(x.block<4, 1>(frameStart + 0, 0));
         Quaterniond CiG_q = IiG_q * calib->CI_q;
@@ -508,17 +484,17 @@ void MSCKF::marginalize(const MatrixX2d& z, const Vector3d& G_p_f, Ref<VectorXd>
         // Calculate feature position in camera frame
         Vector3d C_p_f = CiG_q.inverse() * (G_p_f - G_p_Ci);
 
-        r.block<2, 1>(i * 2, 0) = z.row(i).transpose() - calib->camera.cameraProject(C_p_f);
+        r.block<2, 1>(i * 2, 0) = z.col(i) - calib->camera.cameraProject(C_p_f);
         H_f.block<2, 3>(i * 2, 0) = calib->camera.jacobianH(C_p_f) * CiG_q.toRotationMatrix().transpose();
-        H_x.block<2, 9>(i * 2, H_x.cols() - ODO_SIGMA_FRAME_SIZE * (z.rows() - i + 1)) <<
+        H_x.block<2, 9>(i * 2, H_x.cols() - ODO_SIGMA_FRAME_SIZE * (n - i + 1)) <<
                 H_f.block<2, 3>(i * 2, 0) * crossMat(G_p_f - G_p_Ii), -H_f.block<2, 3>(i * 2, 0), Matrix<double, 2, 3>::Zero();
     }
 
     // Find left null-space
     JacobiSVD<MatrixXd> svd(H_f, Eigen::ComputeFullU);
-    MatrixXd A = svd.matrixU().rightCols(z.rows() * 2 - 3).transpose();
+    MatrixXd A = svd.matrixU().rightCols(n * 2 - 3).transpose();
 
-    if (z.rows() * 2 - 3 != A.rows()) {
+    if (n * 2 - 3 != A.rows()) {
         cout << "A: " << A.rows() << "x" << A.cols() << endl;
         cout << "z: " << z.rows() << "x" << z.cols() << endl;
         cout << "r0: " << r0.rows() << "x" << r0.cols() << endl;
@@ -538,7 +514,8 @@ void MSCKF::marginalize(const MatrixX2d& z, const Vector3d& G_p_f, Ref<VectorXd>
 bool MSCKF::isInlinerCamera(const VectorXd& r0, const MatrixXd& H0)
 {
     double gamma = r0.transpose() * (H0 * sigma * H0.transpose()).inverse() * r0;
-    return gamma <= chi2Inv[ r0.rows() ];
+    cout << "gamma: " << gamma << endl;
+    return gamma <= chi2Inv[ r0.rows() ] && gamma >= 0;
 }
 
 // print

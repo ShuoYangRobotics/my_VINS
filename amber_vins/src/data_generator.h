@@ -37,7 +37,9 @@ public:
     DataGenerator(Calib* _calib);
     void update();
     double getTime();
+    void setTime(double _t);
 
+    Vector3d generatePoint();
     Vector3d getPoint(int i);
     vector<Vector3d> getCloud();
     Vector3d getPosition();          //G_p 

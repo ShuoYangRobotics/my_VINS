@@ -235,10 +235,10 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
     
     fullErrorCovariance.block<ERROR_STATE_SIZE, ERROR_STATE_SIZE>(0, 0) = errorCovariance;
     fullErrorCovariance.block(ERROR_STATE_SIZE, 0, ERROR_STATE_SIZE,errorStateLength - ERROR_STATE_SIZE) =
-   phi * fullErrorCovariance.block(ERROR_STATE_SIZE, 0, ERROR_STATE_SIZE,errorStateLength - ERROR_STATE_SIZE);
+        phi * fullErrorCovariance.block(ERROR_STATE_SIZE, 0, ERROR_STATE_SIZE,errorStateLength - ERROR_STATE_SIZE);
     fullErrorCovariance.block(0, ERROR_STATE_SIZE, errorStateLength - ERROR_STATE_SIZE, ERROR_STATE_SIZE) =
-   fullErrorCovariance.block(0, ERROR_STATE_SIZE, errorStateLength - ERROR_STATE_SIZE, ERROR_STATE_SIZE) * phi.transpose();
-        return;
+        fullErrorCovariance.block(0, ERROR_STATE_SIZE, errorStateLength - ERROR_STATE_SIZE, ERROR_STATE_SIZE) * phi.transpose();
+    return;
 } 
 
 void MSCKF::processImage(const vector<pair<int, Vector3d>> &image)

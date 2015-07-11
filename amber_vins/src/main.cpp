@@ -12,6 +12,7 @@
 #include "camera.h"
 #include "calib.h"
 #include "odometry.h"
+
 using namespace std;
 
 ros::Publisher pub_imu;      
@@ -117,7 +118,7 @@ void imageCallback(const sensor_msgs::PointCloud& image_msg)
         image.push_back(make_pair(id, Vector2d(x, y)));
     }
     cameraMeasurements->addFeatures(image);
-    //msckf->updateCamera(*cameraMeasurements);
+    msckf->updateCamera(*cameraMeasurements);
     cout << *msckf << endl;
 }
 
@@ -285,8 +286,8 @@ void setup()
 
     calib->sigma_Im = 0;
 
-    calib->maxFrame = ODO_MAX_FRAMES;
-    calib->minFrame = 0;
+    calib->maxFrame = 5;
+    calib->minFrame = 3;
 
     generator = new DataGenerator(calib);
     msckf = new MSCKF(calib);
