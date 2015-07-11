@@ -320,7 +320,7 @@ Vector3d Camera::triangulateFromTwoView(const Quaterniond& CiG_q, const Vector3d
     return G_p_f;
 }
 
-Vector3d Camera::triangulate(const Matrix4Xd& CG_q, const Matrix3Xd& G_p_C, const Matrix2Xd& z)
+Vector3d Camera::triangulate(const Matrix4Xd& CG_q, const Matrix3Xd& G_p_C, const Matrix2Xd& z, double* r_norm)
 {
     int n = z.cols();
     TriangulateFunctor functor(this, CG_q, G_p_C, z);
@@ -345,6 +345,9 @@ Vector3d Camera::triangulate(const Matrix4Xd& CG_q, const Matrix3Xd& G_p_C, cons
                 }
             }
 
+    if (r_norm != NULL)
+        *r_norm = min_r_norm;
+    
     cout << "===triangulate====" << endl;
     cout << "CG_q:" << endl << CG_q << endl;
     cout << "G_p_C:" << endl << G_p_C << endl;

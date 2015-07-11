@@ -31,7 +31,7 @@ public:
 
     Vector3d triangulateFromTwoView(const Quaterniond& CiG_q, const Vector3d& G_p_Ci, const Vector2d& zi,
                                     const Quaterniond& CjG_q, const Vector3d& G_p_Cj, const Vector2d& zj);
-    Vector3d triangulate(const Matrix4Xd& CG_q, const Matrix3Xd& G_p_C, const Matrix2Xd& z);
+    Vector3d triangulate(const Matrix4Xd& CG_q, const Matrix3Xd& G_p_C, const Matrix2Xd& z, double* r_norm = NULL);
 
     friend ostream& operator<<(ostream& out, const Camera& camera);
 };

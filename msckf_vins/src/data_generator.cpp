@@ -1,7 +1,7 @@
 #include "data_generator.h"
 #define PI 3.1415926
 //#define WITH_NOISE 1 
-
+#define COMPLEX_TRAJECTORY 1
 DataGenerator::DataGenerator()
 {
     srand(0);
@@ -55,6 +55,7 @@ Vector3d DataGenerator::getPoint(int i)
 
 Vector3d DataGenerator::getPosition()
 {
+#ifdef COMPLEX_TRAJECTORY
     double x, y, z;
     if (t < MAX_TIME)
     {
@@ -75,17 +76,31 @@ Vector3d DataGenerator::getPosition()
         y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(tt / MAX_TIME * M_PI * 2 * 2);
         z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(tt / MAX_TIME * M_PI * 2);
     }
+#elif SIMPLE_TRAJECTORY
+    double x, y, z;
+    x = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI);
+    y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI * 2 * 2);
+    z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI * 2);
+#else
+    double x = 10 * cos(t / 10);
+    double y = 10 * sin(t / 10);
+    double z = 3;
+#endif
 
     return Vector3d(x, y, z);
 }
 
 Matrix3d DataGenerator::getRotation()
 {
+#ifdef COMPLEX_TRAJECTORY
     return (AngleAxisd(30.0 / 180 * M_PI * sin(t / MAX_TIME * M_PI * 2), Vector3d::UnitX())
             * AngleAxisd(40.0 / 180 * M_PI * sin(t / MAX_TIME * M_PI * 2), Vector3d::UnitY())
             * AngleAxisd(0, Vector3d::UnitZ())).toRotationMatrix();
-    //return AngleAxisd(0.0+10.0 / 180 * PI * sin(t / MAX_TIME * PI * 2), Vector3d::UnitZ()).toRotationMatrix();
-    // return Matrix3d::Identity();
+#elif SIMPLE_TRAJECTORY
+    return (AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitY()) * AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitX())).toRotationMatrix();
+#else
+    return Matrix3d::Identity();
+#endif
 }
 
 Vector3d DataGenerator::getAngularVelocity()
@@ -109,6 +124,7 @@ Vector3d DataGenerator::getAngularVelocity()
 
 Vector3d DataGenerator::getVelocity()
 {
+#ifdef COMPLEX_TRAJECTORY
     double dx, dy, dz;
     if (t < MAX_TIME)
     {
@@ -124,13 +140,22 @@ Vector3d DataGenerator::getVelocity()
     }
     else
     {
-        double tt = t - 2 * MAX_TIME;
+        double tt = t -  2 * MAX_TIME;
         dx = MAX_BOX / 2.0 * -sin(tt / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI);
         dy = MAX_BOX / 2.0 * -sin(tt / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
         dz = MAX_BOX / 2.0 * -sin(tt / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
     }
-
-    return getRotation().inverse() * Vector3d(dx, dy, dz);
+#elif SIMPLE_TRAJECTORY
+    double dx, dy, dz;
+    dx = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI) * (1.0 / MAX_TIME * M_PI);
+    dy = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
+    dz = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
+#else
+    double dx = - sin(t / 10);
+    double dy = cos(t / 10);
+    double dz = 0;
+#endif
+    return Vector3d(dx, dy, dz);
 }
 
 //I_am = GI_R(G_a - G_g), G_g = (0, 0, -9.8)
@@ -161,9 +186,9 @@ Vector3d DataGenerator::getLinearAcceleration()
                                 distribution(generator) * sqrt(acc_cov(1, 1)),
                                 distribution(generator) * sqrt(acc_cov(2, 2))
                                );
-    return getRotation().inverse() * (disturb + Vector3d(ddx, ddy, ddz - 9.8));
+    return getRotation().inverse() * (disturb + Vector3d(ddx, ddy, ddz + 9.8));
 #else
-    return getRotation().inverse() * Vector3d(ddx, ddy, ddz - 9.8);
+    return getRotation().inverse() * Vector3d(ddx, ddy, ddz + 9.8);
 #endif
 }
 

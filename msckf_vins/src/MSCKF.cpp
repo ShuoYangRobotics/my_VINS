@@ -165,7 +165,7 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
     s_hat = 0.5f * dt * (d_R.transpose() * curr_a + prev_a);
     //s_hat = dt *curr_a;
     y_hat = 0.5f * dt * s_hat;
-    
+
     /* update nominal state */
     prev_R = spatial_rotation;
 
@@ -188,11 +188,11 @@ void MSCKF::processIMU(double t, Vector3d linear_acceleration, Vector3d angular_
    // cout << "curr_a" << endl << curr_a << endl;
    // cout << "spatal acc" << endl << spatial_rotation * s_hat / dt + g  << endl;
    // cout << "spatal vel" << endl << spatial_velocity  << endl;
-   // cout << "dR"  << endl<< d_R << endl;
+   // cout << "dR"  << endl<< Quaterniond(d_R).coeffs().transpose() << endl;
    // cout << "tmp_pos" << endl << tmp_pos << endl;
    // cout << "tmp_pos increament1" << endl << spatial_velocity * dt << endl;
    // cout << "tmp_pos increament2" << endl << y_hat << endl;
-    
+  // abort();
     //spatial_rotation = spatial_rotation*d_R.transpose(); //R_gb{l+1} = R_gb{l}*q_B{l}B{l+1}
     
     //cout << R_to_quaternion(spatial_rotation) << endl;

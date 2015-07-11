@@ -2,7 +2,7 @@
 //#define COMPLEX_TRAJECTORY 1
 //#define SIMPLE_TRAJECTORY 1
 
-//#define WITH_NOISE 1 
+//#define WITH_NOISE 
 
 Vector3d DataGenerator::generatePoint()
 {
@@ -81,8 +81,8 @@ Vector3d DataGenerator::getPosition()
 
 Matrix3d DataGenerator::getRotation()
 {
-//    return (AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitY()) * AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitX())).toRotationMatrix();
-    return Matrix3d::Identity();
+    return (AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitY()) * AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitX())).toRotationMatrix();
+//    return Matrix3d::Identity();
 
 #ifdef COMPLEX_TRAJECTORY
     return (AngleAxisd(30.0 / 180 * M_PI * sin(t / MAX_TIME * M_PI * 2), Vector3d::UnitX())
@@ -140,9 +140,9 @@ Vector3d DataGenerator::getIMUAngularVelocity()
     t -= delta_t;
     Matrix3d skew = rot.inverse() * drot;
 #ifdef WITH_NOISE
-    Vector3d disturb = Vector3d(distribution(generator) * calib->sigma_gc),
-                                distribution(generator) * calib->sigma_gc),
-                                distribution(generator) * calib->sigma_gc)
+    Vector3d disturb = Vector3d(distribution(random_generator) * calib->sigma_gc,
+                                distribution(random_generator) * calib->sigma_gc,
+                                distribution(random_generator) * calib->sigma_gc
                                );
     return disturb + Vector3d(skew(2, 1), -skew(2, 0), skew(1, 0));
 #else
@@ -185,13 +185,13 @@ Vector3d DataGenerator::getIMULinearAcceleration()
 #endif
 
 #if WITH_NOISE
-    Vector3d disturb = Vector3d(distribution(generator) * calib->sigma_ac,
-                                distribution(generator) * calib->sigma_ac,
-                                distribution(generator) * calib->sigma_ac);
+    Vector3d disturb = Vector3d(distribution(random_generator) * calib->sigma_ac,
+                                distribution(random_generator) * calib->sigma_ac,
+                                distribution(random_generator) * calib->sigma_ac);
 #else
     Vector3d disturb = Vector3d(0, 0, 0);
 #endif
-    return getRotation().inverse() * (disturb + Vector3d(ddx, ddy, ddz + calib->g));
+    return getRotation().transpose() * (disturb + Vector3d(ddx, ddy, ddz + calib->g));
 }
 
 vector<pair<int, Vector2d>> DataGenerator::getImage()
@@ -217,8 +217,8 @@ vector<pair<int, Vector2d>> DataGenerator::getImage()
            //            current_id++ : before_feature_id[i];
             int n_id = i;
 #if WITH_NOISE
-           Vector2d disturb = Vector2d(distribution(generator) * calib->sigma_Im / C_p_f(2) / C_p_f(2),
-                                       distribution(generator) * calib->sigma_Im / C_p_f(2) / C_p_f(2));
+           Vector2d disturb = Vector2d(distribution(random_generator) * calib->sigma_Im / C_p_f(2) / C_p_f(2),
+                                       distribution(random_generator) * calib->sigma_Im / C_p_f(2) / C_p_f(2));
 #else
            Vector2d disturb = Vector2d(0, 0);
 #endif

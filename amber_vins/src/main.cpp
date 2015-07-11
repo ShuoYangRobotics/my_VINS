@@ -279,12 +279,12 @@ void setup()
     calib->C_p_I << -0.02, -0.14, 0; 
     calib->image_imu_offset_t = 0;
 
-    calib->sigma_gc = 0;
-    calib->sigma_ac = 0;
-    calib->sigma_wgc = 0;
-    calib->sigma_wac = 0; 
+    calib->sigma_gc = 0.1;
+    calib->sigma_ac = 0.1;
+    calib->sigma_wgc = 0.1;
+    calib->sigma_wac = 0.1; 
 
-    calib->sigma_Im = 0;
+    calib->sigma_Im = 10;
 
     calib->maxFrame = 5;
     calib->minFrame = 3;
@@ -311,7 +311,7 @@ int main(int argc, char **argv)
         publishIMUAndSimulation();
 
         //publish image data
-        if (publish_count % generator->IMU_PER_IMG == 0)
+        if (publish_count % generator->IMU_PER_IMG == generator->IMU_PER_IMG - 1)
         {
             publishImageData();
             cout << "simulation p: " << generator->getPosition().transpose() << endl;

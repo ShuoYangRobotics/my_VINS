@@ -1,4 +1,22 @@
 #include "odometry.h"
+#include <Eigen/Eigenvalues>
+
+bool isPositiveDefinite(MatrixXd m, bool to_print = false)
+{
+    assert ((m - m.transpose()).norm() < 0.1);
+
+    EigenSolver<MatrixXd> es(m, false);
+    VectorXcd eivals = es.eigenvalues();
+    
+    bool valid = true;
+    for (int i = 0; i < eivals.rows(); i++) 
+        if (eivals(i).real() < -1e-1) 
+            valid = false;
+
+    if (!valid || to_print)
+        cout << eivals.transpose() << endl;
+    return valid;
+}
 
 void CameraMeasurements::addToFeature(list<CameraMeas_t>::iterator& feature, const Vector2d& p)
 {
@@ -124,10 +142,14 @@ void MSCKF::propagate(const Vector3d& I_a_m, const Vector3d& I_g_m, bool propaga
     Vector4d k3 = Omega((I_g_prev + I_g) / 2.0) * (q0 + calib->delta_t / 2.0 * k2) / 2.0;
     Vector4d k4 = Omega(I_g) * (q0 + calib->delta_t * k3) / 2.0;
 
-    Quaterniond I1I_q(Vector4d(0, 0, 0, 1) + calib->delta_t / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4));
-    I1I_q.normalize();
+    Quaterniond I1I_q(q0 + calib->delta_t / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4));
 
-    Quaterniond I1G_q = IG_q * I1I_q;
+    Quaterniond I1G_q = Quaterniond((Matrix4d::Identity() + Omega(I_g * calib->delta_t) / 2.0) * IG_q.coeffs());
+    I1G_q.normalize();
+    I1I_q = IG_q.inverse() * I1G_q;
+ 
+//    I1I_q.normalize();
+//    Quaterniond I1G_q = IG_q * I1I_q;
 
     // Translation
     Vector3d G_a = I1G_q * I_a + G_g;
@@ -202,6 +224,14 @@ void MSCKF::propagate(const Vector3d& I_a_m, const Vector3d& I_g_m, bool propaga
     sigma.block(0, 15, 15, sigma.cols() - 15) = Phi_I * sigma.block(0, 15, 15, sigma.cols() - 15);
     sigma.block(15, 0, sigma.rows() - 15, 15) = sigma.block(0, 15, 15, sigma.cols() - 15).transpose();
 
+    if (!isPositiveDefinite(sigma, true))
+    {
+        cout << "not positve definite" << endl;
+        abort();
+    }
+//    static int cnt = 0;
+//    if (cnt++ > 200)
+        //abort();
     /*
     ** update delayed variables
     */
@@ -241,7 +271,7 @@ void MSCKF::augmentState(void)
     sigma.block(0, sigma.cols() - ODO_SIGMA_FRAME_SIZE, sigma.rows() - ODO_SIGMA_FRAME_SIZE, ODO_SIGMA_FRAME_SIZE) =
         sigma.block(0, 0, sigma.rows() - ODO_SIGMA_FRAME_SIZE, ODO_SIGMA_FRAME_SIZE);
     sigma.block(sigma.rows() - ODO_SIGMA_FRAME_SIZE, 0, ODO_SIGMA_FRAME_SIZE, sigma.cols() - ODO_SIGMA_FRAME_SIZE) =
-        sigma.block(0, 0, ODO_SIGMA_FRAME_SIZE, sigma.cols() - ODO_SIGMA_FRAME_SIZE);    
+        sigma.block(0, 0, ODO_SIGMA_FRAME_SIZE, sigma.cols() - ODO_SIGMA_FRAME_SIZE);        
 }
 
 // remove n old states
@@ -319,10 +349,14 @@ void MSCKF::performUpdate(const VectorXd& delta_x)
 // updateCamera
 void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
 {
+    cout << *this << endl;
+
     //
     // Append current state to frame FIFO
     //
     this->augmentState();
+    cout << "after augment state" << endl;
+    cout << *this << endl;
 
     // initialize H0 and r0
     VectorXd r0(0, 0);
@@ -362,34 +396,39 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
                     G_p_C.col(i) = G_p_Ci;
                 }
 
-                Vector3d G_p_f = calib->camera.triangulate(CG_q, G_p_C, meas_j->z);
+                double r_norm;
+                Vector3d G_p_f = calib->camera.triangulate(CG_q, G_p_C, meas_j->z, &r_norm);
 
-                cout << "feature id: " << meas_j->id << endl;
-                cout << "G_z_f:" << endl << meas_j->z << endl;
-                cout << "G_p_f:" << G_p_f.transpose() << endl;
+                if (r_norm < 10)
+                {
+                    cout << "r_norm: " << r_norm << endl;
+                    cout << "feature id: " << meas_j->id << endl;
+                    cout << "G_z_f:" << endl << meas_j->z << endl;
+                    cout << "G_p_f:" << G_p_f.transpose() << endl;
 
-                // If not a clear outlier:
-                if (isfinite(G_p_f(0)) && isfinite(G_p_f(1)) && isfinite(G_p_f(2))) {
+                    // If not a clear outlier:
+                    if (isfinite(G_p_f(0)) && isfinite(G_p_f(1)) && isfinite(G_p_f(2))) {
 
-                    cout << sigma << endl;
-                    // Marignalize:
-                    VectorXd r0j = VectorXd(n * 2 - 3);
-                    MatrixXd H0j = MatrixXd(n * 2 - 3, sigma.cols());
-                    this->marginalize(meas_j->z, G_p_f, r0j, H0j);
-                    
+//                        cout << sigma << endl;
+                        // Marignalize:
+                        VectorXd r0j = VectorXd(n * 2 - 3);
+                        MatrixXd H0j = MatrixXd(n * 2 - 3, sigma.cols());
+                        this->marginalize(meas_j->z, G_p_f, r0j, H0j);
+                        
 
-                    // TODO: Check if inlier
-                    cout << "marginalize" << endl;
+                        // TODO: Check if inlier
+                        cout << "marginalize" << endl;
 
-                    if (r0j.norm() < 10 && isInlinerCamera(r0j, H0j)) {
-                        //cout << r0j << endl;
-                        //cout << H0j << endl;
+                        if (isInlinerCamera(r0j, H0j)) {
+                            //cout << r0j << endl;
+                            //cout << H0j << endl;
 
-                        // Add to huge H0 and r0 matrix
-                        H0.conservativeResize(H0.rows() + H0j.rows(), NoChange);
-                        r0.conservativeResize(r0.rows() + r0j.rows(), NoChange);
-                        H0.bottomRows(H0j.rows()) = H0j;
-                        r0.bottomRows(r0j.rows()) = r0j;
+                            // Add to huge H0 and r0 matrix
+                            H0.conservativeResize(H0.rows() + H0j.rows(), NoChange);
+                            r0.conservativeResize(r0.rows() + r0j.rows(), NoChange);
+                            H0.bottomRows(H0j.rows()) = H0j;
+                            r0.bottomRows(r0j.rows()) = r0j;
+                        }
                     }
                 }
             }
@@ -412,18 +451,33 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
     // Only if we have measurements
     if (r0.rows() > 0) 
     {
-        cout << "r0.rows():" << r0.rows() <<  endl;
+//        cout << "r0.rows():" << r0.rows() <<  endl;
         // Image noise
         MatrixXd R_q = MatrixXd::Identity(r0.rows(), r0.rows()) * calib->sigma_Im * calib->sigma_Im;
 
         // Kalman gain
         MatrixXd K = sigma * H0.transpose() * (H0 * sigma * H0.transpose() + R_q).inverse();
         cout << "r0: " << r0 << endl;
-        cout << "K: " << K << endl;
+
+        cout << "eigen of sigma " << endl;
+        isPositiveDefinite(sigma, true);
+
+        cout << "eigen of H0 * H0.transpose() " << endl;
+        isPositiveDefinite(H0 * H0.transpose(), true);
+
+        cout << "eigen of H0 * sigma * H0.transpose()" << endl;
+        isPositiveDefinite(H0 * sigma * H0.transpose(), true);
+
+        cout << "eigen of H0 * sigma * H0.transpose() inverse" << endl;
+        isPositiveDefinite((H0 * sigma * H0.transpose()).inverse(), true);
+
+
+//        cout << "H0: " << H0 << endl;
+//        cout << "K: " << K << endl;
         // Update to be appled to state
         VectorXd delta_x = K * r0;
 
-//        cout << "sigma" << endl << sigma << endl;
+  //      cout << "sigma" << endl << sigma << endl;
 
         // Update covariance
         MatrixXd A = MatrixXd::Identity(K.rows(), H0.cols()) - K * H0;
@@ -437,7 +491,10 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
 //        cout << "sigma" << endl << sigma << endl;
         cout << "delta_x: " << endl << delta_x.transpose() << endl;
 
-        //abort();
+//        abort();
+
+        // if (delta_x.norm() > 1)
+        //     abort();
     }
 
     //
@@ -510,12 +567,26 @@ void MSCKF::marginalize(const Matrix2Xd& z, const Vector3d& G_p_f, Ref<VectorXd>
     H0 = A * H_x;
 }
 
+
 // TODO: -isInlinerCamera
 bool MSCKF::isInlinerCamera(const VectorXd& r0, const MatrixXd& H0)
 {
+    if (!isPositiveDefinite(sigma))
+    {
+        cout << "not positve definite" << endl;
+        abort();
+    }
     double gamma = r0.transpose() * (H0 * sigma * H0.transpose()).inverse() * r0;
+
     cout << "gamma: " << gamma << endl;
-    return gamma <= chi2Inv[ r0.rows() ] && gamma >= 0;
+
+    if (gamma < 0)
+        abort();
+
+    if (sizeof(chi2Inv) / sizeof(*chi2Inv) > r0.rows()) 
+        return gamma <= chi2Inv[ r0.rows() ] && gamma >= 0;
+    else
+        return gamma >= 0 && gamma <= 1074;
 }
 
 // print

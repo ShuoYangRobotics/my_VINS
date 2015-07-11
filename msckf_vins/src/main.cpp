@@ -198,11 +198,11 @@ int main(int argc, char **argv)
     ros::Publisher pub_odometry = n.advertise<nav_msgs::Odometry>("/simulation/odometry", 100);
     ros::Publisher pub_pose     = n.advertise<geometry_msgs::PoseStamped>("/simulation/pose", 100);
     ros::Publisher pub_cloud    = n.advertise<sensor_msgs::PointCloud>("/simulation/cloud", 1000);
-    pub_path2     = n.advertise<nav_msgs::Path>("path2", 1000);
+    pub_path2     = n.advertise<nav_msgs::Path>("path", 1000);
     pub_path3    = n.advertise<visualization_msgs::Marker>("path3", 1000);
     pub_path4    = n.advertise<visualization_msgs::Marker>("path4", 1000);
     pub_odometry = n.advertise<nav_msgs::Odometry>("odometry", 1000);
-    pub_pose2     = n.advertise<geometry_msgs::PoseStamped>("pose2", 1000);
+    pub_pose2     = n.advertise<geometry_msgs::PoseStamped>("pose", 1000);
     pub_pose3    = n.advertise<geometry_msgs::PoseStamped>("pose3", 1000);
 
     static tf::TransformBroadcaster br;
@@ -270,6 +270,7 @@ int main(int argc, char **argv)
         Quaterniond q(rotation);
         if (inited == false)
         {
+                inited = true;
                 Vector4d init_q(q.x(), q.y(), q.z(), q.w());  // x y z w
                 Vector3d init_p(position(0), position(1), position(2));
                 Vector3d init_v(velocity(0), velocity(1), velocity(2));    
