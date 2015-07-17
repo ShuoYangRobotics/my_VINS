@@ -14,6 +14,7 @@
 #include "odometry.h"
 
 using namespace std;
+using namespace Eigen;
 
 ros::Publisher pub_imu;      
 ros::Publisher pub_image;   
@@ -21,6 +22,7 @@ ros::Publisher pub_sim_path;
 ros::Publisher pub_sim_odometry;
 ros::Publisher pub_sim_pose;
 ros::Publisher pub_sim_cloud;   
+nav_msgs::Path sim_path;
 ros::Publisher pub_odometry;
 ros::Publisher pub_pose;
 ros::Publisher pub_path;
@@ -28,12 +30,11 @@ ros::Publisher pub_path;
 // visualize results
 nav_msgs::Path path;
 visualization_msgs::Marker path_line;
-nav_msgs::Path sim_path;
 
 Calib* calib;
-DataGenerator* generator;
 MSCKF* msckf;
 CameraMeasurements* cameraMeasurements;
+DataGenerator* generator;
 
 queue<sensor_msgs::Imu> imu_buf;
 
@@ -120,6 +121,8 @@ void imageCallback(const sensor_msgs::PointCloud& image_msg)
     cameraMeasurements->addFeatures(image);
     msckf->updateCamera(*cameraMeasurements);
     cout << *msckf << endl;
+
+    publishOdometryResult();
 }
 
 void setupROS()
@@ -151,8 +154,8 @@ void setupROS()
     path_line.color.r            = 1.0;
     path_line.id                 = 1;
 
-    sim_path.header.frame_id = "world";
     path.header.frame_id = "world";
+    sim_path.header.frame_id = "world";
 }
 
 void publishIMUAndSimulation()
@@ -279,17 +282,14 @@ void setup()
     calib->C_p_I << -0.02, -0.14, 0; 
     calib->image_imu_offset_t = 0;
 
-    calib->sigma_gc = 0.1;
+    calib->sigma_gc = 0.01;
     calib->sigma_ac = 0.1;
-    calib->sigma_wgc = 0.1;
-    calib->sigma_wac = 0.1; 
-
-    calib->sigma_Im = 100;
-
-    calib->maxFrame = 5;
-    calib->minFrame = 3;
+    calib->sigma_wgc = 0.01;
+    calib->sigma_wac = 0.01; 
+    calib->sigma_Im = 1;
 
     generator = new DataGenerator(calib);
+
     msckf = new MSCKF(calib);
     msckf->x.segment<4>(0) = Quaterniond(generator->getRotation()).coeffs();
     msckf->x.segment<3>(0 + 4) = generator->getPosition();
@@ -302,8 +302,8 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "msckf_vins");
 
-    setupROS();
     setup();
+    setupROS();
 
     ros::Rate loop_rate(generator->FREQ);
     for (int publish_count = 0; ros::ok(); publish_count++)
@@ -317,9 +317,7 @@ int main(int argc, char **argv)
             cout << "simulation p: " << generator->getPosition().transpose() << endl;
             cout << "simulation v: " << generator->getVelocity().transpose() << endl;
             cout << "simulation q: " << Quaterniond(generator->getRotation()).coeffs().transpose() << endl;
-
         }
-        publishOdometryResult();
 
         //update work
         generator->update();

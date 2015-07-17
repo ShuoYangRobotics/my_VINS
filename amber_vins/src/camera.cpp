@@ -348,11 +348,11 @@ Vector3d Camera::triangulate(const Matrix4Xd& CG_q, const Matrix3Xd& G_p_C, cons
     if (r_norm != NULL)
         *r_norm = min_r_norm;
     
-    cout << "===triangulate====" << endl;
-    cout << "CG_q:" << endl << CG_q << endl;
-    cout << "G_p_C:" << endl << G_p_C << endl;
-    cout << "G_z_f:" << endl << z << endl;
-    cout << "G_p_f:" << G_p_f.transpose() << endl;
+    // cout << "===triangulate====" << endl;
+    // cout << "CG_q:" << endl << CG_q << endl;
+    // cout << "G_p_C:" << endl << G_p_C << endl;
+    // cout << "G_z_f:" << endl << z << endl;
+    // cout << "G_p_f:" << G_p_f.transpose() << endl;
 
     return G_p_f;
 }

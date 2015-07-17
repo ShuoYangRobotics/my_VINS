@@ -26,12 +26,29 @@ LIST(APPEND SOURCEFILES
   src/utils.cpp
 )
 
+ADD_EXECUTABLE(mixed_node
+  src/mixed_node.cpp
+  ${SOURCEFILES}
+)
+TARGET_LINK_LIBRARIES(mixed_node
+  ${catkin_LIBRARIES}
+)
+
 ADD_EXECUTABLE(amber_vins_node
-  src/main.cpp
+  src/amber_vins_node.cpp
   ${SOURCEFILES}
 )
 
 TARGET_LINK_LIBRARIES(amber_vins_node
+  ${catkin_LIBRARIES}
+)
+
+ADD_EXECUTABLE(data_generator_node
+  src/data_generator_node.cpp
+  ${SOURCEFILES}
+)
+
+TARGET_LINK_LIBRARIES(data_generator_node
   ${catkin_LIBRARIES}
 )
 

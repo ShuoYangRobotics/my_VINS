@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="amber_vins" type="amber_vins_node" name="msckf_vins" output="screen"/>
+    <node pkg="amber_vins" type="data_generator_node" name="data_generator" output="screen"/>
+</launch>

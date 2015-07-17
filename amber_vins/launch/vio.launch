@@ -1,0 +1,9 @@
+<launch>
+    <node pkg="sensor_processor" name="sensor_processor" type="sensor_processor" output="screen">
+        <rosparam file="$(find sensor_processor)/config/right_25000709.yml"/>
+        <remap from="~input_image" to="/camera/image"/>
+        <remap from="~output_image" to="/sensors/image"/>
+    </node>
+    <node pkg="rosbag" type="play" name="bag_player" output="screen" args="-l /Users/amber/Workspace/my_VINS/dataset/2015-02-05-13-44-35.bag"/>
+    <node pkg="amber_vins" type="amber_vins_node" name="amber_vins" output="screen"/>
+</launch>

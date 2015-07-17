@@ -1,8 +1,8 @@
 #include "data_generator.h"
-#define COMPLEX_TRAJECTORY 1
+//#define COMPLEX_TRAJECTORY 1
 //#define SIMPLE_TRAJECTORY 1
 
-//#define WITH_NOISE 
+#define WITH_NOISE 
 
 Vector3d DataGenerator::generatePoint()
 {
@@ -71,8 +71,8 @@ Vector3d DataGenerator::getPosition()
     y = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI * 2 * 2);
     z = MAX_BOX / 2.0 + MAX_BOX / 2.0 * cos(t / MAX_TIME * M_PI * 2);
 #else
-    double x = 10 * cos(t / 10);
-    double y = 10 * sin(t / 10);
+    double x = MAX_BOX * cos(t / MAX_TIME * M_PI * 2);
+    double y = MAX_BOX * sin(t / MAX_TIME * M_PI * 2);
     double z = 3;
 #endif
 
@@ -82,7 +82,6 @@ Vector3d DataGenerator::getPosition()
 Matrix3d DataGenerator::getRotation()
 {
 //    return (AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitY()) * AngleAxisd(0.0 + M_PI * sin(t / 10), Vector3d::UnitX())).toRotationMatrix();
-//    return Matrix3d::Identity();
 
 #ifdef COMPLEX_TRAJECTORY
     return (AngleAxisd(30.0 / 180 * M_PI * sin(t / MAX_TIME * M_PI * 2), Vector3d::UnitX())
@@ -124,8 +123,8 @@ Vector3d DataGenerator::getVelocity()
     dy = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
     dz = MAX_BOX / 2.0 * -sin(t / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
 #else
-    double dx = - sin(t / 10);
-    double dy = cos(t / 10);
+    double dx = - MAX_BOX * sin(t / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
+    double dy = MAX_BOX * cos(t / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
     double dz = 0;
 #endif
     return Vector3d(dx, dy, dz);
@@ -179,12 +178,12 @@ Vector3d DataGenerator::getIMULinearAcceleration()
     ddy = MAX_BOX / 2.0 * -cos(t / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2) * (1.0 / MAX_TIME * M_PI * 2 * 2);
     ddz = MAX_BOX / 2.0 * -cos(t / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2);
 #else
-    double ddx = -0.1 * cos(t / 10);
-    double ddy = -0.1 * sin(t / 10);
+    double ddx = -MAX_BOX * (1.0 / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2) * cos(t / MAX_TIME * M_PI * 2);
+    double ddy = -MAX_BOX * (1.0 / MAX_TIME * M_PI * 2) * (1.0 / MAX_TIME * M_PI * 2) * sin(t / MAX_TIME * M_PI * 2);
     double ddz = 0;
 #endif
 
-#if WITH_NOISE
+#ifdef WITH_NOISE
     Vector3d disturb = Vector3d(distribution(random_generator) * calib->sigma_ac,
                                 distribution(random_generator) * calib->sigma_ac,
                                 distribution(random_generator) * calib->sigma_ac);
@@ -216,12 +215,14 @@ vector<pair<int, Vector2d>> DataGenerator::getImage()
            // int n_id = before_feature_id.find(i) == before_feature_id.end() ?
            //            current_id++ : before_feature_id[i];
             int n_id = i;
-#if WITH_NOISE
-           Vector2d disturb = Vector2d(distribution(random_generator) * calib->sigma_Im / C_p_f(2) / C_p_f(2),
-                                       distribution(random_generator) * calib->sigma_Im / C_p_f(2) / C_p_f(2));
-#else
+// #if WITH_NOISE
+//            Vector2d disturb = Vector2d(distribution(random_generator) * calib->sigma_Im / C_p_f(2) / C_p_f(2),
+//                                        distribution(random_generator) * calib->sigma_Im / C_p_f(2) / C_p_f(2));
+// #else
+//            Vector2d disturb = Vector2d(0, 0);
+// #endif
            Vector2d disturb = Vector2d(0, 0);
-#endif
+
            image.push_back(make_pair(n_id, disturb + C_z_f));
 
            printf("Feature Id: %d, p_gf: [%f, %f, %f], p_cf: [%f, %f, %f], z_cf: [%f, %f]\n",

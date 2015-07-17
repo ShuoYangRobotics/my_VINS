@@ -16,16 +16,16 @@ using namespace Eigen;
 class DataGenerator
 {
 public:
-    static int const NUM_POINTS  = 2000;
+    static int const NUM_POINTS  = 200;
     static int const MAX_BOX     = 10;
     static int const RANGE1      = 15;
     static int const RANGE2      = 25;
     static int const MAX_HEIGHT  = 5;
 
-    static int const FREQ        = 200;
-    static int const IMU_PER_IMG = 50;
+    static int const FREQ        = 800;
+    static int const IMU_PER_IMG = 40;
 
-    static int const MAX_TIME    = 5;
+    static int const MAX_TIME    = 100;
 
     static int const FOV         = 90;
     static int const ROW         = 480;

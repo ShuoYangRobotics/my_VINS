@@ -13,8 +13,8 @@ bool isPositiveDefinite(MatrixXd m, bool to_print = false)
         if (eivals(i).real() < -1e-1) 
             valid = false;
 
-    if (!valid || to_print)
-        cout << eivals.transpose() << endl;
+//    if (!valid || to_print)
+//        cout << eivals.transpose() << endl;
     return valid;
 }
 
@@ -272,6 +272,8 @@ void MSCKF::augmentState(void)
         sigma.block(0, 0, sigma.rows() - ODO_SIGMA_FRAME_SIZE, ODO_SIGMA_FRAME_SIZE);
     sigma.block(sigma.rows() - ODO_SIGMA_FRAME_SIZE, 0, ODO_SIGMA_FRAME_SIZE, sigma.cols() - ODO_SIGMA_FRAME_SIZE) =
         sigma.block(0, 0, ODO_SIGMA_FRAME_SIZE, sigma.cols() - ODO_SIGMA_FRAME_SIZE);        
+    sigma.block(sigma.rows() - ODO_SIGMA_FRAME_SIZE, sigma.cols() - ODO_SIGMA_FRAME_SIZE, ODO_SIGMA_FRAME_SIZE, ODO_SIGMA_FRAME_SIZE) =
+        sigma.block(0, 0, ODO_SIGMA_FRAME_SIZE, ODO_SIGMA_FRAME_SIZE);
 }
 
 // remove n old states
@@ -349,14 +351,14 @@ void MSCKF::performUpdate(const VectorXd& delta_x)
 // updateCamera
 void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
 {
-    cout << *this << endl;
+//    cout << *this << endl;
 
     //
     // Append current state to frame FIFO
     //
     this->augmentState();
-    cout << "after augment state" << endl;
-    cout << *this << endl;
+//    cout << "after augment state" << endl;
+//    cout << *this << endl;
 
     // initialize H0 and r0
     VectorXd r0(0, 0);
@@ -401,10 +403,10 @@ void MSCKF::updateCamera(CameraMeasurements& cameraMeasurements)
 
                 if (r_norm < 100)
                 {
-                    // cout << "r_norm: " << r_norm << endl;
-                    // cout << "feature id: " << meas_j->id << endl;
-                    // cout << "G_z_f:" << endl << meas_j->z << endl;
-                    // cout << "G_p_f:" << G_p_f.transpose() << endl;
+//                    cout << "r_norm: " << r_norm << endl;
+//                    cout << "feature id: " << meas_j->id << endl;
+//                    cout << "G_z_f:" << endl << meas_j->z << endl;
+//                    cout << "G_p_f:" << G_p_f.transpose() << endl;
 
                     // If not a clear outlier:
                     if (isfinite(G_p_f(0)) && isfinite(G_p_f(1)) && isfinite(G_p_f(2))) {
