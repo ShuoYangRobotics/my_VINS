@@ -22,6 +22,7 @@ add ROS packages
    3.  data_generator. a simulated environment that can generate IMU and image 
 
 **-2016-10-08-**
-Please use exp branch amber_vins
+
+Please use exp branch amber_vins. Last year I initiaited this project in April, then in July Amber joined the project and contribute the amber_vins. This version revised original version.
 
 
