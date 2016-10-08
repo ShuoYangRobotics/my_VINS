@@ -21,12 +21,7 @@ add ROS packages
    2.  sensor_processor. Read IMU and process image 
    3.  data_generator. a simulated environment that can generate IMU and image 
 
-**-2015-4-29-**
+**-2016-10-08-**
+Please use exp branch amber_vins
 
-To start the program
 
-  roscore
-  
-  rosrun data\_generator data\_generator\_node
-
-  rosrun msckf\_vins msckf\_vins\_node
